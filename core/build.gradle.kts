@@ -1,17 +1,39 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.kotlinSerialization)
 }
 
+// Android is opt-in: only when an SDK is present (CI). This keeps `core` a pure JVM-only KMP module in
+// SDK-less environments while letting CI add a real `androidTarget()` for the player APK. Nothing in
+// commonMain touches a platform API, so this is purely a build-config addition.
+val androidEnabled = System.getenv("ANDROID_HOME") != null ||
+    System.getenv("ANDROID_SDK_ROOT") != null ||
+    rootProject.file("local.properties").let { it.exists() && it.readText().contains("sdk.dir") }
+
+if (androidEnabled) {
+    pluginManager.apply("com.android.library")
+}
+
 kotlin {
     jvm {
-        // JVM is the one target buildable in this CI image. The intent is for `core` to also
-        // expose `androidTarget()` (Android-first) once the SDK is provisioned — nothing in
-        // commonMain depends on a platform, so adding the target is purely a build-config change.
         compilations.all {
             compileTaskProvider.configure {
                 compilerOptions {
-                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                    jvmTarget.set(JvmTarget.JVM_17)
+                }
+            }
+        }
+    }
+
+    if (androidEnabled) {
+        androidTarget {
+            compilations.all {
+                compileTaskProvider.configure {
+                    compilerOptions {
+                        jvmTarget.set(JvmTarget.JVM_17)
+                    }
                 }
             }
         }
@@ -28,6 +50,20 @@ kotlin {
             dependencies {
                 implementation(kotlin("test"))
             }
+        }
+    }
+}
+
+if (androidEnabled) {
+    extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+        namespace = "dev.hnm.workbench.core"
+        compileSdk = 34
+        defaultConfig {
+            minSdk = 26
+        }
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
         }
     }
 }

@@ -26,6 +26,18 @@ include(":ui")
 // without needing the Android SDK or a physical device.
 include(":desktopApp")
 
-// NOTE: `:backend-android` and `:backend-desktop` (controllers) are described in docs/MODULES.md.
-// They require the Android SDK / native HID toolchains that are not provisioned in this CI image, so
-// they are intentionally not wired into the build yet. See docs/MODULES.md.
+// The Android player app. It needs the Android SDK, so it is only wired into the build when an SDK is
+// available (CI installs one). In SDK-less environments the module is skipped and `:core` stays a
+// JVM-only KMP module — keeping `./gradlew build` green here while CI builds the real APK.
+if (androidSdkAvailable()) {
+    include(":androidApp")
+}
+
+// NOTE: `:backend-desktop` (controller HID backends) is described in docs/MODULES.md. It requires
+// native HID/SDL toolchains that are not provisioned here, so it is not wired in yet.
+
+fun androidSdkAvailable(): Boolean {
+    if (System.getenv("ANDROID_HOME") != null || System.getenv("ANDROID_SDK_ROOT") != null) return true
+    val localProps = rootDir.resolve("local.properties")
+    return localProps.exists() && localProps.readText().contains("sdk.dir")
+}
