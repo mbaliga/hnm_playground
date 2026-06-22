@@ -21,11 +21,19 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build core + desktopApp
+      - name: Build core + ui + desktopApp
         run: ./gradlew build --stacktrace
 
-      - name: Run tests
-        run: ./gradlew :core:jvmTest --stacktrace
+      - name: Run tests (core + headless UI render)
+        run: ./gradlew :core:jvmTest :ui:jvmTest --stacktrace
+
+      - name: Upload editor screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editor-preview
+          path: ui/build/preview/workbench.png
+          if-no-files-found: ignore
 
       # NOTE: the Android app + controller-HID backends are not yet wired into the Gradle build
       # (they need the Android SDK / native toolchains). When :backend-android lands, add an

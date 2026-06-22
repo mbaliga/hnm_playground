@@ -32,15 +32,24 @@ unit-tested on a JVM target, plus a runnable desktop driver:
 | Shared `TransportClock` + latency compensation | ✅ | `core/.../playback/TransportClock.kt` |
 | Capability model + graceful degradation (LRA / ERM / wideband) | ✅ | `core/.../playback/Backends.kt` |
 | Exporters: Native JSON, Kotlin `VibrationEffect`, AHAP, WAV | ✅ | `core/.../export/` |
+| Variations (mutate / family / A-B), capture-a-rhythm, pattern library | ✅ | `core/.../design/`, `core/.../library/` |
+| `PatternTransport`: audio + haptics on one clock w/ latency comp | ✅ | `core/.../playback/PatternTransport.kt` |
+| Compose Multiplatform editor UI (timeline, envelope, palette, inspector, live export) | ✅ | `ui/` |
 | JVM desktop audio backend (`javax.sound`) + CLI driver | ✅ | `desktopApp/` |
 | Android Vibrator backend + capability probe | 📋 reference | [docs/ANDROID.md](docs/ANDROID.md) |
 | Controller backends (SDL rumble, DualSense HID) | 📋 planned | [docs/MODULES.md](docs/MODULES.md) |
-| Compose Multiplatform editor UI | 📋 planned | [docs/MODULES.md](docs/MODULES.md) |
 
-> The Android app, controller-HID backends, and Compose UI need the Android SDK / native toolchains
-> that aren't provisioned in this CI image, so they're documented as a copy-ready reference rather
-> than shipped as code that wouldn't compile here. Nothing in `core` depends on a platform, so adding
-> those targets is purely build-config + glue. See [docs/MODULES.md](docs/MODULES.md).
+> The Android app and controller-HID backends need the Android SDK / native toolchains that aren't
+> provisioned in this CI image, so they're documented as a copy-ready reference rather than shipped as
+> code that wouldn't compile here. Nothing in `core` depends on a platform, so adding those targets is
+> purely build-config + glue. See [docs/MODULES.md](docs/MODULES.md).
+
+### The editor
+
+The Compose Multiplatform editor (`:ui`) renders headlessly in CI (`:ui:jvmTest` paints the whole tree
+off-screen to `ui/build/preview/workbench.png`) and runs as a desktop window via `./gradlew :ui:run`:
+
+![Editor screenshot](docs/workbench.png)
 
 ## Run it
 
@@ -53,6 +62,9 @@ unit-tested on a JVM target, plus a runnable desktop driver:
 # writes confirm-audio.wav + confirm-haptic.wav. Add --play to hear it (if an output device exists).
 ./gradlew :desktopApp:run
 ./gradlew :desktopApp:run --args="--play"
+
+# Launch the Compose editor window (needs a display)
+./gradlew :ui:run
 ```
 
 The driver reproduces the brief's worked examples exactly — e.g. the Kotlin export:

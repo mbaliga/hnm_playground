@@ -45,7 +45,6 @@ object Variations {
                         }
                     },
                 )
-                else -> track
             }
         }
         return pattern.copy(name = "${pattern.name} (var $seed)", tracks = tracks)

@@ -17,6 +17,9 @@
 - **`:core`** — the keystone, implemented and unit-tested on a `jvm()` target. Source sets are
   arranged so an `androidTarget()` is a pure build-config addition (nothing in `commonMain` touches a
   platform API).
+- **`:ui`** — the Compose Multiplatform editor. Composables live in `commonMain` (so an Android UI can
+  reuse them); the desktop window entrypoint is in the `jvm` target. It build-verifies headlessly:
+  `:ui:jvmTest` paints the whole tree off-screen with `ImageComposeScene` to a PNG, no display needed.
 - **`:desktopApp`** — a JVM entrypoint that wires `core` to a `javax.sound` audio backend and drives
   the full export/render path from the command line (`JvmAudioBackend`, `Main.kt`).
 
@@ -46,10 +49,10 @@ Both share one `TransportClock` so audio and haptics line up, with per-backend l
 | **M1** Android haptic loop | IR → `scheduleHaptics` → Vibrator; capability probe | ✅ core done · 📋 Android glue in [ANDROID.md](ANDROID.md) |
 | **M2** Audio engine | oscillators + envelopes + filter → `renderAudio`; WAV export | ✅ done (audio out is desktop; Android audio is glue) |
 | **M3** Coupling | envelope follower + sonify on shared clock, latency comp | ✅ done in `core` |
-| **M4** Editor UI | Compose MP timeline / envelope editor / palette / library | 📋 planned |
+| **M4** Editor UI | Compose MP timeline / envelope editor / palette / inspector / library / A-B | ✅ done (`:ui`, headless-rendered in CI) |
 | **M5** Exporters | Kotlin `VibrationEffect` + AHAP (+ JSON + WAV) | ✅ done |
 | **M6** Desktop backend | JVM audio ✅ · Xbox rumble (SDL) → DualSense HID | ✅ audio · 📋 controllers |
-| **M7** Polish | mutate/randomize, capture-a-rhythm, ERM degrade testing | 📋 planned (degrade path already covered by `core` + tests) |
+| **M7** Polish | mutate/randomize ✅ · capture-a-rhythm ✅ · ERM degrade testing ✅ · device-variance | ✅ core done · 📋 device-variance needs hardware |
 
 ## Adding the Android target
 

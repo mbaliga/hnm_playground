@@ -9,8 +9,10 @@ kotlin {
         // expose `androidTarget()` (Android-first) once the SDK is provisioned — nothing in
         // commonMain depends on a platform, so adding the target is purely a build-config change.
         compilations.all {
-            compilerOptions.configure {
-                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            compileTaskProvider.configure {
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                }
             }
         }
     }
