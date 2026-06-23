@@ -3,11 +3,18 @@ package dev.hnm.workbench.android
 import android.content.Context
 import android.os.Build
 import android.os.Handler
+import android.os.SystemClock
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import dev.hnm.workbench.core.ir.Continuous
+import dev.hnm.workbench.core.ir.HapticAudioPattern
+import dev.hnm.workbench.core.ir.HapticEvent
+import dev.hnm.workbench.core.ir.HapticTrack
+import dev.hnm.workbench.core.ir.Primitive
 import dev.hnm.workbench.core.ir.PrimitiveType
+import dev.hnm.workbench.core.ir.Transient
 import dev.hnm.workbench.core.playback.ActuatorType
 import dev.hnm.workbench.core.playback.HapticCapabilities
 import dev.hnm.workbench.core.playback.HapticCommand
@@ -16,14 +23,27 @@ import dev.hnm.workbench.core.playback.PlayPrimitive
 import dev.hnm.workbench.core.playback.PlayWaveform
 
 /**
- * Bridges `core`'s device-agnostic [HapticCommand] schedule to the real Android `Vibrator`. The
- * mapping mirrors what `KotlinVibrationEffectExporter` emits, so what you feel here matches the
- * exported code. Probing reports the actuator's real capabilities so `core` can degrade gracefully.
+ * Bridges `core`'s device-agnostic schedule to the real Android `Vibrator`, choosing the best
+ * available rendering for the actual hardware:
+ *   1. composition primitives (richest — real LRA exposed through the standard API),
+ *   2. predefined effects (`EFFECT_CLICK`/`TICK`/… — OEM-tuned, work without amplitude control),
+ *   3. a stitched on/off waveform with a perceptible minimum pulse (last resort / sustained buzz).
+ *
+ * Detection is reported honestly: many phones (gaming phones especially) keep their rich "4D" haptics
+ * behind a vendor SDK and only expose a plain on/off motor to AOSP, so "no primitives" does NOT mean
+ * the hardware is a cheap ERM.
  */
 object AndroidHaptics {
 
-    /** ERM motors need ~tens of ms to spin up to a felt level; floor every short pulse to this. */
+    /** ERM-style motors need ~tens of ms to spin up to a felt level; floor every short pulse to this. */
     private const val MIN_PULSE_MS = 70L
+
+    private val PREDEFINED_EFFECTS = listOf(
+        "CLICK" to VibrationEffect.EFFECT_CLICK,
+        "TICK" to VibrationEffect.EFFECT_TICK,
+        "HEAVY_CLICK" to VibrationEffect.EFFECT_HEAVY_CLICK,
+        "DOUBLE_CLICK" to VibrationEffect.EFFECT_DOUBLE_CLICK,
+    )
 
     fun vibrator(context: Context): Vibrator {
         val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -38,9 +58,8 @@ object AndroidHaptics {
             .toSet()
         val actuator = when {
             !hasVibrator -> ActuatorType.NONE
-            supported.isNotEmpty() -> ActuatorType.LRA
-            hasAmplitude -> ActuatorType.LRA
-            else -> ActuatorType.ERM
+            supported.isNotEmpty() || hasAmplitude -> ActuatorType.LRA
+            else -> ActuatorType.ERM // best-effort; see actuatorLabel() for the honest caveat
         }
         return HapticCapabilities(
             hasVibrator = hasVibrator,
@@ -51,48 +70,65 @@ object AndroidHaptics {
         )
     }
 
+    /** Predefined effects the device explicitly reports as supported (UNKNOWN/NO are omitted). */
+    fun supportedEffects(vibrator: Vibrator): List<String> {
+        val support = vibrator.areEffectsSupported(*PREDEFINED_EFFECTS.map { it.second }.toIntArray())
+        return PREDEFINED_EFFECTS.filterIndexed { i, _ ->
+            support.getOrNull(i) == Vibrator.VIBRATION_EFFECT_SUPPORT_YES
+        }.map { it.first }
+    }
+
+    /** An honest label that doesn't over-claim ERM when the API simply isn't exposing the LRA. */
+    fun actuatorLabel(caps: HapticCapabilities): String = when {
+        !caps.hasVibrator -> "no vibrator"
+        caps.supportedPrimitives.isNotEmpty() -> "LRA — composition primitives"
+        caps.hasAmplitudeControl -> "LRA — amplitude control"
+        else -> "on/off via standard API (rich haptics likely behind a vendor SDK)"
+    }
+
     /**
-     * Fire a whole scheduled pattern as a single [VibrationEffect]. An all-primitive schedule composes
-     * atomically (best fidelity on an LRA). Anything else — one-shots/waveforms, the common case on
-     * ERM hardware with no amplitude control — is stitched into one on/off waveform with a perceptible
-     * minimum pulse width, so short transients actually move the motor instead of being too brief to
-     * feel. (Earlier this only fired the first command, and 20 ms pulses were imperceptible on an ERM.)
+     * Play a whole pattern, picking the best rendering for the hardware. [commands] is the `core`
+     * schedule; [pattern] is used when we can render individual events more faithfully (predefined
+     * effects) than the collapsed schedule allows.
      */
-    fun play(
+    fun playPattern(
         vibrator: Vibrator,
+        pattern: HapticAudioPattern,
         commands: List<HapticCommand>,
+        handler: Handler,
         onError: (String) -> Unit,
     ) {
         if (commands.isEmpty()) {
             onError("Nothing scheduled — device reports no vibrator?")
             return
         }
-        val effect = if (commands.all { it is PlayPrimitive }) {
-            composePrimitives(commands.filterIsInstance<PlayPrimitive>())
-        } else {
-            buildWaveform(commands)
-        }
-        if (effect == null) {
-            onError("Could not build a vibration for this pattern.")
+        // 1) Native composition primitives.
+        if (commands.all { it is PlayPrimitive }) {
+            composePrimitives(commands.filterIsInstance<PlayPrimitive>())?.let { vibrateSafely(vibrator, it, onError) }
             return
         }
-        vibrateSafely(vibrator, effect, onError)
+        // 2) Discrete taps with no primitive support -> OEM-tuned predefined effects, scheduled in time.
+        val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }
+        if (events.isNotEmpty() && events.all { it is Transient || it is Primitive }) {
+            val base = SystemClock.uptimeMillis()
+            events.sortedBy { it.time }.forEach { event ->
+                val effect = predefinedFor(event)
+                handler.postAtTime({ vibrateSafely(vibrator, effect, onError) }, base + (event.time * 1000).toLong())
+            }
+            return
+        }
+        // 3) Sustained / mixed content -> stitched waveform.
+        buildWaveform(commands)?.let { vibrateSafely(vibrator, it, onError) }
+            ?: onError("Could not build a vibration for this pattern.")
     }
 
     /**
-     * A deliberately unmistakable buzz to confirm the actuator works at all, independent of any
-     * pattern: a 600 ms full-amplitude one-shot, then a single CLICK primitive. If you can't feel
-     * THIS, the issue is the device/OS (haptics setting, ring mode), not the pattern.
+     * An unmistakable buzz to confirm the actuator works at all, independent of any pattern.
      */
     fun selfTest(vibrator: Vibrator, handler: Handler, onError: (String) -> Unit) {
         vibrateSafely(vibrator, VibrationEffect.createOneShot(600, VibrationEffect.DEFAULT_AMPLITUDE), onError)
         handler.postDelayed({
-            val click = runCatching {
-                VibrationEffect.startComposition()
-                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f, 0)
-                    .compose()
-            }.getOrNull()
-            if (click != null) vibrateSafely(vibrator, click, onError)
+            vibrateSafely(vibrator, VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK), onError)
         }, 900)
     }
 
@@ -108,6 +144,45 @@ object AndroidHaptics {
                 else -> c.toString()
             }
         }
+    }
+
+    /** Describe the rendering this pattern will actually use on this device (shown under each row). */
+    fun renderingSummary(pattern: HapticAudioPattern, commands: List<HapticCommand>): String {
+        if (commands.isEmpty()) return "nothing (no vibrator)"
+        if (commands.all { it is PlayPrimitive }) {
+            return "primitives: " + commands.filterIsInstance<PlayPrimitive>().joinToString(", ") { it.type.name }
+        }
+        val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }
+        if (events.isNotEmpty() && events.all { it is Transient || it is Primitive }) {
+            return "predefined: " + events.sortedBy { it.time }.joinToString(", ") { effectNameFor(it) }
+        }
+        return "waveform · ${describe(commands)}"
+    }
+
+    private fun effectNameFor(event: HapticEvent): String = when (event) {
+        is Transient -> when {
+            event.sharpness >= 0.66 -> "TICK"
+            event.sharpness >= 0.33 -> "CLICK"
+            else -> "HEAVY_CLICK"
+        }
+        is Primitive -> "CLICK"
+        is Continuous -> "BUZZ"
+    }
+
+    /** Map an event to an OEM-tuned predefined effect (used when composition primitives are absent). */
+    private fun predefinedFor(event: HapticEvent): VibrationEffect = when (event) {
+        is Transient -> VibrationEffect.createPredefined(
+            when {
+                event.sharpness >= 0.66 -> VibrationEffect.EFFECT_TICK
+                event.sharpness >= 0.33 -> VibrationEffect.EFFECT_CLICK
+                else -> VibrationEffect.EFFECT_HEAVY_CLICK
+            },
+        )
+        is Primitive -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+        is Continuous -> VibrationEffect.createOneShot(
+            (event.duration * 1000).toLong().coerceAtLeast(MIN_PULSE_MS),
+            VibrationEffect.DEFAULT_AMPLITUDE,
+        )
     }
 
     /**

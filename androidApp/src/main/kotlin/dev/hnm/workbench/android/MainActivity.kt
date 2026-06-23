@@ -92,7 +92,7 @@ class MainActivity : Activity() {
         // Render both paths first, then trigger together so they stay coincident.
         val commands = renderer.scheduleHaptics(pattern, capabilities)
         val stream = renderer.renderAudio(pattern, SAMPLE_RATE)
-        AndroidHaptics.play(vibrator, commands) { toast(it) }
+        AndroidHaptics.playPattern(vibrator, pattern, commands, handler) { toast(it) }
         runCatching { audio.play(stream) }.onFailure { toast("audio failed: ${it.message}") }
     }
 
@@ -124,8 +124,12 @@ class MainActivity : Activity() {
     private fun diagnostics(): String {
         val c = capabilities
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
-        return "build v0.2 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"} · ${c.actuatorType} · " +
-            "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"}\nprimitives: $prims"
+        val effects = AndroidHaptics.supportedEffects(vibrator)
+        val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
+        return "build v0.3 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+            "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
+            "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
+            "predefined effects: $eff"
     }
 
     private fun toast(message: String) {
@@ -135,7 +139,7 @@ class MainActivity : Activity() {
     // --- tiny view helpers (no XML / appcompat to keep the build minimal) ---
 
     private fun patternRow(name: String, pattern: HapticAudioPattern): LinearLayout {
-        val schedule = AndroidHaptics.describe(renderer.scheduleHaptics(pattern, capabilities))
+        val schedule = AndroidHaptics.renderingSummary(pattern, renderer.scheduleHaptics(pattern, capabilities))
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
