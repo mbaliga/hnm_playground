@@ -23,6 +23,7 @@ import dev.hnm.workbench.ui.components.ExportPanel
 import dev.hnm.workbench.ui.components.InspectorPanel
 import dev.hnm.workbench.ui.components.MotionPalette
 import dev.hnm.workbench.ui.components.PalettePanel
+import dev.hnm.workbench.ui.components.TexturePalette
 import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.model.EditorState
 import dev.hnm.workbench.ui.theme.WorkbenchColors
@@ -46,6 +47,7 @@ fun WorkbenchApp(state: EditorState = remember { EditorState() }) {
                         TimelineView(state)
                         EnvelopeEditor(state)
                         MotionPalette(state)
+                        TexturePalette(state)
                         PalettePanel(state)
                     }
                     // Tooling column.

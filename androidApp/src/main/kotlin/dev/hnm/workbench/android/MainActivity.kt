@@ -19,6 +19,9 @@ import dev.hnm.workbench.core.design.MotionPrimitive
 import dev.hnm.workbench.core.design.MotionPrimitives
 import dev.hnm.workbench.core.design.RhythmCapture
 import dev.hnm.workbench.core.design.Tap
+import dev.hnm.workbench.core.design.TextureField
+import dev.hnm.workbench.core.design.TextureFieldType
+import dev.hnm.workbench.core.design.TextureFields
 import dev.hnm.workbench.core.design.Variations
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
 import dev.hnm.workbench.core.ir.Continuous
@@ -59,6 +62,8 @@ class MainActivity : Activity() {
             MotionPrimitive.entries.forEach { p ->
                 add("Motion · ${p.displayName}" to MotionPrimitives.toPattern(p))
             }
+            // Stage-2 texture fields — feel smooth→rough across all four field types.
+            texturePatterns().forEach { add(it) }
         }
 
         val root = LinearLayout(this).apply {
@@ -121,6 +126,28 @@ class MainActivity : Activity() {
             ),
         )
 
+    /**
+     * Three roughness levels × all four texture types = 12 texture demos.
+     * Slow, medium, and fast scrub velocities let you feel the velocity→frequency mapping on the actuator.
+     */
+    private fun texturePatterns(): List<Pair<String, HapticAudioPattern>> {
+        val roughnesses = listOf(0.2 to "smooth", 0.5 to "mid", 0.85 to "rough")
+        val velocities = listOf(0.5 to "slow", 1.5 to "fast")
+        return buildList {
+            for (type in TextureFieldType.entries) {
+                for ((r, rLabel) in roughnesses) {
+                    val field = TextureField(type = type, roughness = r)
+                    add("Texture · ${type.displayName} · $rLabel" to TextureFields.toPattern(field))
+                }
+            }
+            // Velocity comparison pair using Perlin mid-roughness.
+            val midPerlin = TextureField(type = TextureFieldType.PERLIN, roughness = 0.5)
+            for ((v, vLabel) in velocities) {
+                add("Texture · Perlin mid · $vLabel scrub" to TextureFields.toPattern(midPerlin, velocity = v))
+            }
+        }
+    }
+
     private fun capturedRhythm(): HapticAudioPattern =
         RhythmCapture.fromTaps(
             listOf(Tap(0.0, 0.9), Tap(0.12, 0.6), Tap(0.24, 0.6), Tap(0.5, 1.0)),
@@ -132,7 +159,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.4 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.5 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"

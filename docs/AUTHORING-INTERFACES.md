@@ -1,6 +1,6 @@
 # Visual & Procedural Authoring Interfaces for Haptics: A Map of the Buildable and the Frontier
 
-> **Implementation status (Stage 1 landed).** The motion-primitive route is now live: `core`'s
+> **Implementation status (Stages 1 + 2 landed).** The motion-primitive route is now live: `core`'s
 > `MotionPrimitives` generates the eight named primitives (Breath, Stir, Reform, Reach, Erupt,
 > Coalesce, Give, Settle) from deterministic spring-mass-damper / swell math — one value-over-time
 > curve that is both the on-screen motion and the haptic envelope. Oscillatory primitives render as
@@ -8,8 +8,17 @@
 > intensity follows the curve. The Compose editor has a motion-primitive palette (each tile sparklines
 > its curve; tap to load), and the whole thing flows through the existing renderer/exporters
 > (e.g. Settle exports as a decaying `PRIMITIVE_TICK` train). Covered by `MotionPrimitivesTest`.
-> See the editor with Settle loaded: ![motion editor](workbench-motion.png). Stages 2–4 below remain
-> the forward map.
+> See the editor with Settle loaded: ![motion editor](workbench-motion.png).
+>
+> **Stage 2 (texture fields) is also live.** `core`'s `TextureFields` generates Perlin gradient noise,
+> 1-D Worley (cellular/Voronoi), fractal Brownian motion (fBm), and value noise fields, each
+> scrubbable at an arbitrary velocity — the velocity-driven playback law (finger speed →
+> instantaneous temporal frequency) that the surface-haptics research establishes as the right
+> interaction model. Roughness maps to spatial frequency exponentially (1–64 Hz/unit) because the
+> perceptual roughness dimension is approximately log-scaled. The editor's `TexturePalette` shows all
+> four field types with live roughness and velocity sliders; the Android player (v0.5) includes
+> smooth/mid/rough variants of each type plus a slow-vs-fast Perlin pair to demonstrate the velocity
+> law on the actuator. Covered by `TextureFieldTest`. Stages 3–4 remain the forward map.
 
 ## TL;DR
 - **The motion-primitive route is the right thing to build first.** Animation and haptics already share a time axis, so a named easing/spring vocabulary (Breath, Stir, Settle…) maps directly and reliably onto Android's envelope IR with essentially zero perceptual guesswork — it is both the most buildable-now and the most perceptually dependable of the three routes. Texture-fields are the most novel and inspiring but need perceptual tuning; physics/material is the most powerful but the most complex and should come last.
