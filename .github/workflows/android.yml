@@ -46,9 +46,17 @@ jobs:
           set -e
           apk=$(find androidApp/build/outputs/apk/debug -name '*.apk' | head -1)
           echo "Found APK at: $apk"
+          # Version the filename (versionName + short SHA) so every build is a distinct download URL —
+          # a fixed name gets served from the browser/download-manager cache and you keep getting the
+          # old APK.
+          ver=$(grep -oP 'versionName = "\K[^"]+' androidApp/build.gradle.kts | head -1)
+          short=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          name="haptics-player-v${ver}-${short}.apk"
           mkdir -p dist
-          cp "$apk" dist/haptics-player-debug.apk
-          echo "apk=dist/haptics-player-debug.apk" >> "$GITHUB_OUTPUT"
+          cp "$apk" "dist/${name}"
+          echo "apk=dist/${name}" >> "$GITHUB_OUTPUT"
+          echo "name=${name}" >> "$GITHUB_OUTPUT"
+          echo "ver=${ver}" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
@@ -63,11 +71,13 @@ jobs:
           tag_name: android-player-debug
           name: Haptics Player (debug APK)
           body: |
-            Debug build of the on-device haptics + audio player, rebuilt automatically from
-            `${{ github.sha }}`.
+            **Latest build: v${{ steps.stage.outputs.ver }}** (`${{ github.sha }}`)
 
-            Install on a phone (Android 12+): download `haptics-player-debug.apk` below, then open it
-            and allow installation from this source. It's a debug build — unsigned for the Play Store,
-            fine for sideloading.
+            ⬇️ Direct download (a fresh, version-stamped URL each build so it's never cache-served):
+            https://github.com/mbaliga/hnm_playground/releases/download/android-player-debug/${{ steps.stage.outputs.name }}
+
+            Install on a phone (Android 12+): download the APK below, open it, allow installation from
+            this source. Debug build — unsigned for the Play Store, fine for sideloading. Confirm the
+            in-app top line shows the matching `build vX` after installing.
           prerelease: true
           files: ${{ steps.stage.outputs.apk }}
