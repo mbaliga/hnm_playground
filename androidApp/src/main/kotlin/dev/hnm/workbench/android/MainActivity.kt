@@ -92,7 +92,7 @@ class MainActivity : Activity() {
         // Render both paths first, then trigger together so they stay coincident.
         val commands = renderer.scheduleHaptics(pattern, capabilities)
         val stream = renderer.renderAudio(pattern, SAMPLE_RATE)
-        AndroidHaptics.play(vibrator, commands, handler) { toast(it) }
+        AndroidHaptics.play(vibrator, commands) { toast(it) }
         runCatching { audio.play(stream) }.onFailure { toast("audio failed: ${it.message}") }
     }
 
@@ -124,7 +124,7 @@ class MainActivity : Activity() {
     private fun diagnostics(): String {
         val c = capabilities
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
-        return "vibrator ${if (c.hasVibrator) "present" else "ABSENT"} · ${c.actuatorType} · " +
+        return "build v0.2 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"} · ${c.actuatorType} · " +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"}\nprimitives: $prims"
     }
 

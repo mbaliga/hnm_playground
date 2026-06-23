@@ -3,7 +3,6 @@ package dev.hnm.workbench.android
 import android.content.Context
 import android.os.Build
 import android.os.Handler
-import android.os.SystemClock
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -22,6 +21,9 @@ import dev.hnm.workbench.core.playback.PlayWaveform
  * exported code. Probing reports the actuator's real capabilities so `core` can degrade gracefully.
  */
 object AndroidHaptics {
+
+    /** ERM motors need ~tens of ms to spin up to a felt level; floor every short pulse to this. */
+    private const val MIN_PULSE_MS = 70L
 
     fun vibrator(context: Context): Vibrator {
         val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
@@ -50,30 +52,31 @@ object AndroidHaptics {
     }
 
     /**
-     * Fire a whole scheduled pattern. An all-primitive schedule composes into one atomic effect; any
-     * other schedule (one-shots / waveforms, possibly several) is dispatched on [handler] at each
-     * command's time — fixing the earlier bug where only the first command played.
+     * Fire a whole scheduled pattern as a single [VibrationEffect]. An all-primitive schedule composes
+     * atomically (best fidelity on an LRA). Anything else — one-shots/waveforms, the common case on
+     * ERM hardware with no amplitude control — is stitched into one on/off waveform with a perceptible
+     * minimum pulse width, so short transients actually move the motor instead of being too brief to
+     * feel. (Earlier this only fired the first command, and 20 ms pulses were imperceptible on an ERM.)
      */
     fun play(
         vibrator: Vibrator,
         commands: List<HapticCommand>,
-        handler: Handler,
         onError: (String) -> Unit,
     ) {
         if (commands.isEmpty()) {
             onError("Nothing scheduled — device reports no vibrator?")
             return
         }
-        if (commands.all { it is PlayPrimitive }) {
-            val effect = composePrimitives(commands.filterIsInstance<PlayPrimitive>()) ?: return
-            vibrateSafely(vibrator, effect, onError)
+        val effect = if (commands.all { it is PlayPrimitive }) {
+            composePrimitives(commands.filterIsInstance<PlayPrimitive>())
+        } else {
+            buildWaveform(commands)
+        }
+        if (effect == null) {
+            onError("Could not build a vibration for this pattern.")
             return
         }
-        val base = SystemClock.uptimeMillis()
-        for (command in commands) {
-            val effect = effectFor(command) ?: continue
-            handler.postAtTime({ vibrateSafely(vibrator, effect, onError) }, base + (command.atSeconds * 1000).toLong())
-        }
+        vibrateSafely(vibrator, effect, onError)
     }
 
     /**
@@ -107,14 +110,51 @@ object AndroidHaptics {
         }
     }
 
-    private fun effectFor(command: HapticCommand): VibrationEffect? = when (command) {
-        is PlayPrimitive -> composePrimitives(listOf(command))
-        is PlayWaveform -> VibrationEffect.createWaveform(command.timingsMs, command.amplitudes, command.repeat)
-        is PlayOneShot -> VibrationEffect.createOneShot(
-            command.durationMs.coerceAtLeast(1L),
-            command.amplitude.coerceIn(1, 255),
-        )
-        else -> null
+    /**
+     * Stitch a schedule into one waveform timeline. Each event becomes an "on" segment (one-shots and
+     * primitives get at least [MIN_PULSE_MS] so an ERM is actually felt; waveforms keep their own
+     * envelope), with "off" gaps between events. On no-amplitude hardware the amplitudes collapse to
+     * on/off automatically.
+     */
+    private fun buildWaveform(commands: List<HapticCommand>): VibrationEffect? {
+        data class Seg(val startMs: Long, val durMs: Long, val amp: Int)
+
+        val segments = mutableListOf<Seg>()
+        for (command in commands) {
+            val startMs = (command.atSeconds * 1000).toLong().coerceAtLeast(0L)
+            when (command) {
+                is PlayOneShot ->
+                    segments += Seg(startMs, maxOf(command.durationMs, MIN_PULSE_MS), command.amplitude.coerceIn(1, 255))
+                is PlayPrimitive ->
+                    segments += Seg(startMs, MIN_PULSE_MS, (command.scale * 255).toInt().coerceIn(1, 255))
+                is PlayWaveform -> {
+                    var local = 0L
+                    for (i in command.timingsMs.indices) {
+                        val amp = command.amplitudes.getOrElse(i) { 0 }
+                        if (amp > 0) segments += Seg(startMs + local, command.timingsMs[i].coerceAtLeast(1L), amp.coerceIn(1, 255))
+                        local += command.timingsMs[i]
+                    }
+                }
+                else -> {}
+            }
+        }
+        if (segments.isEmpty()) return null
+        segments.sortBy { it.startMs }
+
+        val timings = mutableListOf<Long>()
+        val amplitudes = mutableListOf<Int>()
+        var cursor = 0L
+        for (seg in segments) {
+            val start = maxOf(seg.startMs, cursor)
+            if (start > cursor) {
+                timings += (start - cursor)
+                amplitudes += 0
+            }
+            timings += seg.durMs
+            amplitudes += seg.amp
+            cursor = start + seg.durMs
+        }
+        return VibrationEffect.createWaveform(timings.toLongArray(), amplitudes.toIntArray(), -1)
     }
 
     private fun composePrimitives(primitives: List<PlayPrimitive>): VibrationEffect? {
