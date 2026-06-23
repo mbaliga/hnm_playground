@@ -1,6 +1,10 @@
 package dev.hnm.workbench.android
 
 import android.content.Context
+import android.os.Build
+import android.os.Handler
+import android.os.SystemClock
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -45,30 +49,98 @@ object AndroidHaptics {
         )
     }
 
-    /** Build a single [VibrationEffect] for the whole scheduled pattern, or null if there's nothing. */
-    fun toEffect(commands: List<HapticCommand>): VibrationEffect? {
-        if (commands.isEmpty()) return null
-
-        // All-primitive schedules compose into one atomic effect (the LRA path).
-        if (commands.all { it is PlayPrimitive }) {
-            val composition = VibrationEffect.startComposition()
-            var prevAt = 0.0
-            commands.filterIsInstance<PlayPrimitive>().forEach { cmd ->
-                val delayMs = ((cmd.atSeconds - prevAt) * 1000).toInt().coerceAtLeast(0)
-                composition.addPrimitive(primitiveId(cmd.type), cmd.scale.coerceIn(0f, 1f), delayMs)
-                prevAt = cmd.atSeconds
-            }
-            return composition.compose()
+    /**
+     * Fire a whole scheduled pattern. An all-primitive schedule composes into one atomic effect; any
+     * other schedule (one-shots / waveforms, possibly several) is dispatched on [handler] at each
+     * command's time — fixing the earlier bug where only the first command played.
+     */
+    fun play(
+        vibrator: Vibrator,
+        commands: List<HapticCommand>,
+        handler: Handler,
+        onError: (String) -> Unit,
+    ) {
+        if (commands.isEmpty()) {
+            onError("Nothing scheduled — device reports no vibrator?")
+            return
         }
+        if (commands.all { it is PlayPrimitive }) {
+            val effect = composePrimitives(commands.filterIsInstance<PlayPrimitive>()) ?: return
+            vibrateSafely(vibrator, effect, onError)
+            return
+        }
+        val base = SystemClock.uptimeMillis()
+        for (command in commands) {
+            val effect = effectFor(command) ?: continue
+            handler.postAtTime({ vibrateSafely(vibrator, effect, onError) }, base + (command.atSeconds * 1000).toLong())
+        }
+    }
 
-        // Degraded paths (ERM etc.) — play the first concrete command.
-        return when (val cmd = commands.first()) {
-            is PlayWaveform -> VibrationEffect.createWaveform(cmd.timingsMs, cmd.amplitudes, cmd.repeat)
-            is PlayOneShot -> VibrationEffect.createOneShot(
-                cmd.durationMs.coerceAtLeast(1L),
-                cmd.amplitude.coerceIn(1, 255),
-            )
-            else -> null
+    /**
+     * A deliberately unmistakable buzz to confirm the actuator works at all, independent of any
+     * pattern: a 600 ms full-amplitude one-shot, then a single CLICK primitive. If you can't feel
+     * THIS, the issue is the device/OS (haptics setting, ring mode), not the pattern.
+     */
+    fun selfTest(vibrator: Vibrator, handler: Handler, onError: (String) -> Unit) {
+        vibrateSafely(vibrator, VibrationEffect.createOneShot(600, VibrationEffect.DEFAULT_AMPLITUDE), onError)
+        handler.postDelayed({
+            val click = runCatching {
+                VibrationEffect.startComposition()
+                    .addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1f, 0)
+                    .compose()
+            }.getOrNull()
+            if (click != null) vibrateSafely(vibrator, click, onError)
+        }, 900)
+    }
+
+    /** Short human-readable summary of a schedule, shown under each pattern so the path is visible. */
+    fun describe(commands: List<HapticCommand>): String {
+        if (commands.isEmpty()) return "no haptic commands"
+        return commands.joinToString("  ·  ") { c ->
+            val ms = (c.atSeconds * 1000).toInt()
+            when (c) {
+                is PlayPrimitive -> "${c.type}@${ms}ms×${(c.scale * 100).toInt()}%"
+                is PlayWaveform -> "waveform@${ms}ms(${c.timingsMs.size} steps)"
+                is PlayOneShot -> "oneshot@${ms}ms(${c.durationMs}ms,a=${c.amplitude})"
+                else -> c.toString()
+            }
+        }
+    }
+
+    private fun effectFor(command: HapticCommand): VibrationEffect? = when (command) {
+        is PlayPrimitive -> composePrimitives(listOf(command))
+        is PlayWaveform -> VibrationEffect.createWaveform(command.timingsMs, command.amplitudes, command.repeat)
+        is PlayOneShot -> VibrationEffect.createOneShot(
+            command.durationMs.coerceAtLeast(1L),
+            command.amplitude.coerceIn(1, 255),
+        )
+        else -> null
+    }
+
+    private fun composePrimitives(primitives: List<PlayPrimitive>): VibrationEffect? {
+        if (primitives.isEmpty()) return null
+        val composition = VibrationEffect.startComposition()
+        var prevAt = 0.0
+        primitives.forEach { cmd ->
+            val delayMs = ((cmd.atSeconds - prevAt) * 1000).toInt().coerceAtLeast(0)
+            composition.addPrimitive(primitiveId(cmd.type), cmd.scale.coerceIn(0f, 1f), delayMs)
+            prevAt = cmd.atSeconds
+        }
+        return composition.compose()
+    }
+
+    private fun vibrateSafely(vibrator: Vibrator, effect: VibrationEffect, onError: (String) -> Unit) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // USAGE_TOUCH keeps haptics from being suppressed by ring/media routing on some OEMs.
+                val attrs = VibrationAttributes.Builder().setUsage(VibrationAttributes.USAGE_TOUCH).build()
+                vibrator.vibrate(effect, attrs)
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator.vibrate(effect)
+            }
+        } catch (t: Throwable) {
+            onError("vibrate failed: ${t.message}")
         }
     }
 

@@ -4,6 +4,8 @@ import android.app.Activity
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.Vibrator
 import android.view.Gravity
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -12,24 +14,29 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import dev.hnm.workbench.core.design.RhythmCapture
 import dev.hnm.workbench.core.design.Tap
 import dev.hnm.workbench.core.design.Variations
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
+import dev.hnm.workbench.core.ir.Continuous
+import dev.hnm.workbench.core.ir.Envelope
 import dev.hnm.workbench.core.ir.HapticAudioPattern
+import dev.hnm.workbench.core.ir.HapticTrack
 import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.core.playback.HapticCapabilities
 
 /**
- * The on-device player (M1/M6, "player now, editor later"). It lists the built-in pattern plus
- * generated variations and a captured rhythm, and plays each on the phone's real actuator + speaker
- * via the same `core` IR/renderer used everywhere else. Nothing here is Android-specific beyond the
- * Vibrator/AudioTrack glue — the design logic all lives in `core`.
+ * The on-device player. It lists the built-in pattern, generated variations, a captured rhythm and a
+ * sustained-buzz demo, and plays each on the phone's real actuator + speaker via the same `core`
+ * IR/renderer used everywhere else. A self-test and on-screen diagnostics make it clear what the
+ * device reported and what's actually being sent to the vibrator.
  */
 class MainActivity : Activity() {
 
     private val renderer = DefaultPatternRenderer()
     private val audio = AudioPlayer()
+    private val handler = Handler(Looper.getMainLooper())
     private lateinit var vibrator: Vibrator
     private var capabilities: HapticCapabilities = HapticCapabilities.LRA_FULL
 
@@ -41,7 +48,8 @@ class MainActivity : Activity() {
 
         val patterns = buildList {
             add("Confirm" to BuiltInPatterns.CONFIRM)
-            Variations.family(BuiltInPatterns.CONFIRM, count = 4).forEachIndexed { i, p ->
+            add("Strong buzz (400 ms)" to strongBuzz())
+            Variations.family(BuiltInPatterns.CONFIRM, count = 3).forEachIndexed { i, p ->
                 add("Confirm · variation ${i + 1}" to p)
             }
             add("Captured rhythm" to capturedRhythm())
@@ -53,8 +61,19 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(24), dp(20), dp(24))
         }
         root.addView(title("Haptics + Audio Player"))
-        root.addView(caption("Tap a row to feel it on this device."))
-        root.addView(caption(capabilitySummary()))
+        root.addView(caption(diagnostics()))
+        root.addView(spacer(dp(10)))
+
+        // Self-test: an unmistakable buzz to confirm the actuator works independent of any pattern.
+        root.addView(
+            Button(this).apply {
+                text = "▶  Vibration self-test (strong)"
+                setOnClickListener {
+                    AndroidHaptics.selfTest(vibrator, handler) { toast(it) }
+                }
+            },
+        )
+        root.addView(caption("If you can't feel the self-test, check Settings → Sound & vibration → vibration intensity, and that the phone isn't in a mode that mutes haptics."))
         root.addView(spacer(dp(12)))
 
         patterns.forEach { (name, pattern) -> root.addView(patternRow(name, pattern)) }
@@ -65,16 +84,36 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         audio.release()
+        handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
 
     private fun play(pattern: HapticAudioPattern) {
         // Render both paths first, then trigger together so they stay coincident.
-        val effect = AndroidHaptics.toEffect(renderer.scheduleHaptics(pattern, capabilities))
+        val commands = renderer.scheduleHaptics(pattern, capabilities)
         val stream = renderer.renderAudio(pattern, SAMPLE_RATE)
-        runCatching { effect?.let { vibrator.vibrate(it) } }
-        runCatching { audio.play(stream) }
+        AndroidHaptics.play(vibrator, commands, handler) { toast(it) }
+        runCatching { audio.play(stream) }.onFailure { toast("audio failed: ${it.message}") }
     }
+
+    private fun strongBuzz(): HapticAudioPattern =
+        HapticAudioPattern(
+            name = "Strong buzz",
+            tracks = listOf(
+                HapticTrack(
+                    id = "h1",
+                    events = listOf(
+                        Continuous(
+                            time = 0.0,
+                            duration = 0.4,
+                            intensity = 1.0,
+                            sharpness = 0.5,
+                            envelope = Envelope(attack = 0.02, sustain = 1.0, release = 0.05),
+                        ),
+                    ),
+                ),
+            ),
+        )
 
     private fun capturedRhythm(): HapticAudioPattern =
         RhythmCapture.fromTaps(
@@ -82,26 +121,43 @@ class MainActivity : Activity() {
             name = "Captured rhythm",
         )
 
-    private fun capabilitySummary(): String {
+    private fun diagnostics(): String {
         val c = capabilities
-        val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.size.toString()
-        return "actuator ${c.actuatorType} · amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · " +
-            "primitives $prims"
+        val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
+        return "vibrator ${if (c.hasVibrator) "present" else "ABSENT"} · ${c.actuatorType} · " +
+            "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"}\nprimitives: $prims"
+    }
+
+    private fun toast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
     // --- tiny view helpers (no XML / appcompat to keep the build minimal) ---
 
-    private fun patternRow(name: String, pattern: HapticAudioPattern): LinearLayout =
-        LinearLayout(this).apply {
+    private fun patternRow(name: String, pattern: HapticAudioPattern): LinearLayout {
+        val schedule = AndroidHaptics.describe(renderer.scheduleHaptics(pattern, capabilities))
+        return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(6), 0, dp(6))
+            setPadding(0, dp(8), 0, dp(8))
             addView(
-                TextView(this@MainActivity).apply {
-                    text = name
-                    setTextColor(Color.parseColor("#E6E8EC"))
-                    textSize = 16f
+                LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
                     layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = name
+                            setTextColor(Color.parseColor("#E6E8EC"))
+                            textSize = 16f
+                        },
+                    )
+                    addView(
+                        TextView(this@MainActivity).apply {
+                            text = schedule
+                            setTextColor(Color.parseColor("#8B90A0"))
+                            textSize = 11f
+                        },
+                    )
                 },
             )
             addView(
@@ -111,6 +167,7 @@ class MainActivity : Activity() {
                 },
             )
         }
+    }
 
     private fun title(text: String) = TextView(this).apply {
         this.text = text
