@@ -15,6 +15,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import dev.hnm.workbench.core.design.MotionPrimitive
+import dev.hnm.workbench.core.design.MotionPrimitives
 import dev.hnm.workbench.core.design.RhythmCapture
 import dev.hnm.workbench.core.design.Tap
 import dev.hnm.workbench.core.design.Variations
@@ -53,6 +55,10 @@ class MainActivity : Activity() {
                 add("Confirm · variation ${i + 1}" to p)
             }
             add("Captured rhythm" to capturedRhythm())
+            // Stage-1 motion primitives — feel the spring/swell vocabulary on the real actuator.
+            MotionPrimitive.entries.forEach { p ->
+                add("Motion · ${p.displayName}" to MotionPrimitives.toPattern(p))
+            }
         }
 
         val root = LinearLayout(this).apply {
@@ -126,7 +132,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.3.1 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.4 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"
