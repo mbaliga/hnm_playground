@@ -21,6 +21,7 @@ import dev.hnm.workbench.ui.components.CapabilityPanel
 import dev.hnm.workbench.ui.components.EnvelopeEditor
 import dev.hnm.workbench.ui.components.ExportPanel
 import dev.hnm.workbench.ui.components.InspectorPanel
+import dev.hnm.workbench.ui.components.MotionPalette
 import dev.hnm.workbench.ui.components.PalettePanel
 import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.model.EditorState
@@ -44,6 +45,7 @@ fun WorkbenchApp(state: EditorState = remember { EditorState() }) {
                     Column(Modifier.weight(1.4f), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                         TimelineView(state)
                         EnvelopeEditor(state)
+                        MotionPalette(state)
                         PalettePanel(state)
                     }
                     // Tooling column.

@@ -1,5 +1,16 @@
 # Visual & Procedural Authoring Interfaces for Haptics: A Map of the Buildable and the Frontier
 
+> **Implementation status (Stage 1 landed).** The motion-primitive route is now live: `core`'s
+> `MotionPrimitives` generates the eight named primitives (Breath, Stir, Reform, Reach, Erupt,
+> Coalesce, Give, Settle) from deterministic spring-mass-damper / swell math — one value-over-time
+> curve that is both the on-screen motion and the haptic envelope. Oscillatory primitives render as
+> transients at the motion's peaks (playable on any actuator); swells render as a `Continuous` whose
+> intensity follows the curve. The Compose editor has a motion-primitive palette (each tile sparklines
+> its curve; tap to load), and the whole thing flows through the existing renderer/exporters
+> (e.g. Settle exports as a decaying `PRIMITIVE_TICK` train). Covered by `MotionPrimitivesTest`.
+> See the editor with Settle loaded: ![motion editor](workbench-motion.png). Stages 2–4 below remain
+> the forward map.
+
 ## TL;DR
 - **The motion-primitive route is the right thing to build first.** Animation and haptics already share a time axis, so a named easing/spring vocabulary (Breath, Stir, Settle…) maps directly and reliably onto Android's envelope IR with essentially zero perceptual guesswork — it is both the most buildable-now and the most perceptually dependable of the three routes. Texture-fields are the most novel and inspiring but need perceptual tuning; physics/material is the most powerful but the most complex and should come last.
 - **The perceptual science backs the pivot away from language.** Vision and touch share an amodal "roughness" channel (spatial frequency/grain ↔ vibration frequency; density ↔ event rate), so a visual/material handle is a far less lossy controller of felt vibration than a word is — exactly the gap the user identified with cross-cultural onomatopoeia.

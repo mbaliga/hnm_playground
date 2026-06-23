@@ -104,6 +104,16 @@ class EditorState {
         select(0)
     }
 
+    /** Replace the whole pattern (e.g. when loading a motion primitive or library entry). */
+    fun load(newPattern: HapticAudioPattern) {
+        pattern = newPattern
+        variationSeed = 1
+        select(if (hapticEventsOf(newPattern).isNotEmpty()) 0 else null)
+    }
+
+    private fun hapticEventsOf(p: HapticAudioPattern) =
+        p.tracks.filterIsInstance<HapticTrack>().firstOrNull()?.events ?: emptyList()
+
     fun exportText(): String = when (exportKind) {
         ExportKind.JSON -> PatternSerialization.encode(pattern)
         ExportKind.KOTLIN -> KotlinVibrationEffectExporter.export(pattern, capabilities)
