@@ -18,7 +18,9 @@
 > perceptual roughness dimension is approximately log-scaled. The editor's `TexturePalette` shows all
 > four field types with live roughness and velocity sliders; the Android player (v0.5) includes
 > smooth/mid/rough variants of each type plus a slow-vs-fast Perlin pair to demonstrate the velocity
-> law on the actuator. Covered by `TextureFieldTest`. Stages 3–4 remain the forward map.
+> law on the actuator. Covered by `TextureFieldTest`.
+> See the editor with an fBm field scrubbed in (the timeline is the felt envelope):
+> ![texture editor](workbench-texture.png). Stages 3–4 remain the forward map.
 
 ## TL;DR
 - **The motion-primitive route is the right thing to build first.** Animation and haptics already share a time axis, so a named easing/spring vocabulary (Breath, Stir, Settle…) maps directly and reliably onto Android's envelope IR with essentially zero perceptual guesswork — it is both the most buildable-now and the most perceptually dependable of the three routes. Texture-fields are the most novel and inspiring but need perceptual tuning; physics/material is the most powerful but the most complex and should come last.

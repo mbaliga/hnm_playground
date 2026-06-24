@@ -4,6 +4,9 @@ import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
 import dev.hnm.workbench.core.design.MotionPrimitive
 import dev.hnm.workbench.core.design.MotionPrimitives
+import dev.hnm.workbench.core.design.TextureField
+import dev.hnm.workbench.core.design.TextureFieldType
+import dev.hnm.workbench.core.design.TextureFields
 import dev.hnm.workbench.ui.model.EditorState
 import org.jetbrains.skia.EncodedImageFormat
 import java.io.File
@@ -52,6 +55,25 @@ class PreviewRenderTest {
                 ?: error("PNG encode returned null")
             File("build/preview").apply { mkdirs() }
             File("build/preview/workbench-settle.png").writeBytes(png)
+            assertTrue(png.size > 5_000)
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersEditorWithLoadedTextureField() {
+        // Exercises the Stage-2 path: a procedural texture field scrubbed into the editor renders end-to-end.
+        val field = TextureField(type = TextureFieldType.FBM, roughness = 0.7)
+        val state = EditorState().apply { load(TextureFields.toPattern(field)) }
+        val scene = ImageComposeScene(width = 1180, height = 820, density = Density(1f)) {
+            WorkbenchApp(state)
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-texture.png").writeBytes(png)
             assertTrue(png.size > 5_000)
         } finally {
             scene.close()

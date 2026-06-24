@@ -76,7 +76,7 @@ fun TexturePalette(state: EditorState, modifier: Modifier = Modifier) {
                 valueRange = 0.2f..3.0f,
                 modifier = Modifier.weight(1f),
             )
-            Text("${String.format("%.1f", velocity)}×", color = WorkbenchColors.OnSurface, fontSize = 10.sp, modifier = Modifier.width(30.dp))
+            Text("${(velocity * 10).toInt() / 10.0}×", color = WorkbenchColors.OnSurface, fontSize = 10.sp, modifier = Modifier.width(30.dp))
         }
 
         FlowRow(
