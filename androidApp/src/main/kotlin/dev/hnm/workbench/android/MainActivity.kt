@@ -17,6 +17,7 @@ import android.widget.TextView
 import android.widget.Toast
 import dev.hnm.workbench.core.design.MotionPrimitive
 import dev.hnm.workbench.core.design.MotionPrimitives
+import dev.hnm.workbench.core.design.ParameterNavigator
 import dev.hnm.workbench.core.design.RhythmCapture
 import dev.hnm.workbench.core.design.Tap
 import dev.hnm.workbench.core.design.TextureField
@@ -64,6 +65,8 @@ class MainActivity : Activity() {
             }
             // Stage-2 texture fields — feel smooth→rough across all four field types.
             texturePatterns().forEach { add(it) }
+            // Stage-3 parameter navigator — feel a monotonically graded family between two feels.
+            navigatorPatterns().forEach { add(it) }
         }
 
         val root = LinearLayout(this).apply {
@@ -148,6 +151,20 @@ class MainActivity : Activity() {
         }
     }
 
+    /**
+     * Stage-3 graded families: a Perlin smooth→rough texture walk and a Stir→Settle motion morph,
+     * each in 5 steps. Played in order, they should feel like a monotonic gradient, not random steps.
+     */
+    private fun navigatorPatterns(): List<Pair<String, HapticAudioPattern>> = buildList {
+        ParameterNavigator.textureFamilyPatterns(
+            TextureField(type = TextureFieldType.PERLIN, roughness = 0.05),
+            TextureField(type = TextureFieldType.PERLIN, roughness = 0.95),
+            count = 5,
+        ).forEachIndexed { i, p -> add("Navigate · texture ${i + 1}/5" to p) }
+        ParameterNavigator.motionFamilyPatterns(MotionPrimitive.STIR, MotionPrimitive.SETTLE, count = 5)
+            .forEachIndexed { i, p -> add("Navigate · motion ${i + 1}/5" to p) }
+    }
+
     private fun capturedRhythm(): HapticAudioPattern =
         RhythmCapture.fromTaps(
             listOf(Tap(0.0, 0.9), Tap(0.12, 0.6), Tap(0.24, 0.6), Tap(0.5, 1.0)),
@@ -159,7 +176,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.5 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.6 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"

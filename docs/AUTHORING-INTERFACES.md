@@ -1,6 +1,6 @@
 # Visual & Procedural Authoring Interfaces for Haptics: A Map of the Buildable and the Frontier
 
-> **Implementation status (Stages 1 + 2 landed).** The motion-primitive route is now live: `core`'s
+> **Implementation status (Stages 1–3 landed).** The motion-primitive route is now live: `core`'s
 > `MotionPrimitives` generates the eight named primitives (Breath, Stir, Reform, Reach, Erupt,
 > Coalesce, Give, Settle) from deterministic spring-mass-damper / swell math — one value-over-time
 > curve that is both the on-screen motion and the haptic envelope. Oscillatory primitives render as
@@ -20,7 +20,20 @@
 > smooth/mid/rough variants of each type plus a slow-vs-fast Perlin pair to demonstrate the velocity
 > law on the actuator. Covered by `TextureFieldTest`.
 > See the editor with an fBm field scrubbed in (the timeline is the felt envelope):
-> ![texture editor](workbench-texture.png). Stages 3–4 remain the forward map.
+> ![texture editor](workbench-texture.png).
+>
+> **Stage 3 (parameter navigator) is also live.** `core`'s `ParameterNavigator` does the deterministic,
+> on-device half of the relocated-AI story: linear interpolation between two authored feels, producing
+> a perceptually graded family. Two latent spaces are already continuous — `TextureField`
+> (roughness/density/octaves) and `SpringParams` (naturalHz/damping/x0/v0, now extracted from the
+> motion primitives) — so `interpolate(a, b, t)` / `family(a, b, n)` walk smooth→rough or ringy→dead.
+> The editor's `NavigatorPanel` fills a 5-tile family between two endpoints (tap to load); the Android
+> player (v0.6) plays a Perlin smooth→rough walk and a Stir→Settle morph as ordered, monotonic
+> gradients. The roadmap's Stage-3 threshold — *"give me a family of 5 produces perceptually graded,
+> monotonic variation"* — is checked by `ParameterNavigatorTest` (texture crossing-counts and motion
+> oscillation-counts both vary monotonically across the family). A learned interpolator could later
+> replace the straight-line walk with a perceptually-shaped trajectory behind the same API.
+> ![navigator editor](workbench-navigator.png). Stage 4 remains the forward map.
 
 ## TL;DR
 - **The motion-primitive route is the right thing to build first.** Animation and haptics already share a time axis, so a named easing/spring vocabulary (Breath, Stir, Settle…) maps directly and reliably onto Android's envelope IR with essentially zero perceptual guesswork — it is both the most buildable-now and the most perceptually dependable of the three routes. Texture-fields are the most novel and inspiring but need perceptual tuning; physics/material is the most powerful but the most complex and should come last.

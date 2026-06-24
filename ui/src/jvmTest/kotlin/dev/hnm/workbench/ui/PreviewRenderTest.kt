@@ -79,4 +79,25 @@ class PreviewRenderTest {
             scene.close()
         }
     }
+
+    @Test
+    fun rendersEditorWithNavigatorFamily() {
+        // Exercises the Stage-3 path: a member of an interpolated motion family loaded end-to-end.
+        val family = dev.hnm.workbench.core.design.ParameterNavigator.motionFamilyPatterns(
+            MotionPrimitive.STIR, MotionPrimitive.SETTLE, count = 5,
+        )
+        val state = EditorState().apply { load(family[2]) }
+        val scene = ImageComposeScene(width = 1180, height = 900, density = Density(1f)) {
+            WorkbenchApp(state)
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-navigator.png").writeBytes(png)
+            assertTrue(png.size > 5_000)
+        } finally {
+            scene.close()
+        }
+    }
 }

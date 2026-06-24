@@ -49,6 +49,13 @@ enum class MotionPrimitive(val displayName: String, val description: String) {
 data class MotionPeak(val time: Seconds, val magnitude: Double, val sharpness: Double)
 
 /**
+ * The four spring-mass-damper parameters behind an oscillatory motion primitive. Exposed so Stage-3
+ * parameter navigation ([ParameterNavigator]) can interpolate between two primitives in this small
+ * continuous space — naturalHz/damping/x0/v0 are exactly the "latent vector" of an oscillatory feel.
+ */
+data class SpringParams(val naturalHz: Double, val damping: Double, val x0: Double, val v0: Double)
+
+/**
  * A sampled value-over-time motion curve. [samples] are signed (a spring swings either side of its
  * target); the rectified magnitude is what drives haptic intensity. Sampled densely so it can be both
  * drawn (animation/envelope preview) and analysed for peaks.
@@ -86,16 +93,27 @@ object MotionPrimitives {
 
     private const val SAMPLE_RATE = 1000
 
+    /** Spring parameters for each oscillatory primitive — the continuous space Stage 3 navigates. */
+    val SPRINGS: Map<MotionPrimitive, SpringParams> = mapOf(
+        MotionPrimitive.STIR to SpringParams(naturalHz = 5.0, damping = 0.14, x0 = 0.0, v0 = 1.0),
+        MotionPrimitive.REACH to SpringParams(naturalHz = 8.0, damping = 0.32, x0 = 0.0, v0 = 1.0),
+        MotionPrimitive.ERUPT to SpringParams(naturalHz = 18.0, damping = 0.11, x0 = 0.0, v0 = 2.2),
+        MotionPrimitive.GIVE to SpringParams(naturalHz = 7.0, damping = 0.55, x0 = 1.0, v0 = 0.0),
+        MotionPrimitive.SETTLE to SpringParams(naturalHz = 14.0, damping = 0.17, x0 = 1.0, v0 = 0.0),
+    )
+
+    /** The spring parameters for [p], or null if it isn't an oscillatory spring primitive. */
+    fun springParamsFor(p: MotionPrimitive): SpringParams? = SPRINGS[p]
+
+    /** The base tap sharpness for a primitive (exposed for Stage-3 interpolation). */
+    fun sharpnessFor(p: MotionPrimitive): Double = baseSharpness(p)
+
     /** The signed motion curve for a primitive (for animation/envelope preview). */
     fun curve(primitive: MotionPrimitive): MotionCurve = when (primitive) {
         MotionPrimitive.BREATH -> swell(durationSeconds = 0.9, attackFraction = 0.45)
         MotionPrimitive.REFORM -> swell(durationSeconds = 0.6, attackFraction = 0.25)
-        MotionPrimitive.STIR -> spring(naturalHz = 5.0, damping = 0.14, x0 = 0.0, v0 = 1.0)
-        MotionPrimitive.REACH -> spring(naturalHz = 8.0, damping = 0.32, x0 = 0.0, v0 = 1.0)
-        MotionPrimitive.ERUPT -> spring(naturalHz = 18.0, damping = 0.11, x0 = 0.0, v0 = 2.2)
-        MotionPrimitive.GIVE -> spring(naturalHz = 7.0, damping = 0.55, x0 = 1.0, v0 = 0.0)
-        MotionPrimitive.SETTLE -> spring(naturalHz = 14.0, damping = 0.17, x0 = 1.0, v0 = 0.0)
         MotionPrimitive.COALESCE -> coalesceCurve()
+        else -> springCurve(SPRINGS.getValue(primitive))
     }
 
     /** The felt peaks for a primitive, with per-primitive sharpness. */
@@ -170,6 +188,23 @@ object MotionPrimitives {
     }
 
     // --- generators ----------------------------------------------------------
+
+    /** The motion curve for an arbitrary set of spring parameters (used by Stage-3 interpolation). */
+    fun springCurve(p: SpringParams): MotionCurve = spring(p.naturalHz, p.damping, p.x0, p.v0)
+
+    /**
+     * Build a playable burst pattern from arbitrary spring parameters — transients at the motion's
+     * peaks plus the matching intensity curve. [sharpness] sets the crispness of every tap. This is
+     * the rendering path for interpolated (non-named) motions produced by [ParameterNavigator].
+     */
+    fun springPattern(name: String, p: SpringParams, sharpness: Double): HapticAudioPattern {
+        val c = springCurve(p)
+        val events = c.peaks().map { (t, m) ->
+            Transient(t, (m * 0.95).coerceIn(0.0, 1.0), sharpness.coerceIn(0.0, 1.0))
+        }
+        val track = HapticTrack(id = "h1", events = events, curves = listOf(intensityCurve(c)))
+        return HapticAudioPattern(name = name, tracks = listOf(track))
+    }
 
     /**
      * Closed-form damped spring-mass-damper (unit mass) released from displacement [x0] with initial
