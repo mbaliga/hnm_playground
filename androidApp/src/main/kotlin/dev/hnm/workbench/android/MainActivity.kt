@@ -55,7 +55,8 @@ class MainActivity : Activity() {
         capabilities = AndroidHaptics.probe(vibrator)
 
         val patterns = buildList {
-            add("Confirm" to BuiltInPatterns.CONFIRM)
+            // Built-in reference vocabulary.
+            BuiltInPatterns.ALL.forEach { add(it.name to it) }
             add("Strong buzz (400 ms)" to strongBuzz())
             Variations.family(BuiltInPatterns.CONFIRM, count = 3).forEachIndexed { i, p ->
                 add("Confirm · variation ${i + 1}" to p)
@@ -180,7 +181,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.7 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.8 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"

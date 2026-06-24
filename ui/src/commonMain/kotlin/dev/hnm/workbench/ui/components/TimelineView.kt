@@ -56,14 +56,21 @@ fun TimelineView(state: EditorState, modifier: Modifier = Modifier) {
                         val w = size.width.toFloat()
                         if (w <= 0f) return@detectTapGestures
                         val tappedTime = offset.x / w * duration
-                        val nearest = state.hapticEvents
-                            .withIndex()
-                            .minByOrNull { abs(it.value.time - tappedTime) }
-                        // Only select if the tap is in the upper (haptic) half and reasonably close.
-                        if (nearest != null && offset.y < size.height / 2f &&
-                            abs(nearest.value.time - tappedTime) < duration * 0.08
-                        ) {
-                            state.select(nearest.index)
+                        val threshold = duration * 0.08
+                        if (offset.y < size.height / 2f) {
+                            // Upper half → haptic events.
+                            val nearest = state.hapticEvents.withIndex()
+                                .minByOrNull { abs(it.value.time - tappedTime) }
+                            if (nearest != null && abs(nearest.value.time - tappedTime) < threshold) {
+                                state.select(nearest.index)
+                            }
+                        } else {
+                            // Lower half → audio events.
+                            val nearest = state.audioEvents.withIndex()
+                                .minByOrNull { abs(it.value.time - tappedTime) }
+                            if (nearest != null && abs(nearest.value.time - tappedTime) < threshold) {
+                                state.selectAudio(nearest.index)
+                            }
                         }
                     }
                 },
@@ -102,7 +109,7 @@ fun TimelineView(state: EditorState, modifier: Modifier = Modifier) {
 
             // Audio events as filled blocks in the lower lane.
             pattern.tracks.filterIsInstance<AudioTrack>().forEach { track ->
-                track.events.forEach { ev ->
+                track.events.forEachIndexed { audioIdx, ev ->
                     val x = (ev.time / duration * w).toFloat()
                     val dur = when (ev) {
                         is OscEvent -> ev.duration
@@ -111,8 +118,10 @@ fun TimelineView(state: EditorState, modifier: Modifier = Modifier) {
                     val wEv = (dur / duration * w).toFloat().coerceAtLeast(3f)
                     val gain = if (ev is OscEvent) ev.gain else 1.0
                     val barH = (hapticLane.height * 0.7f * gain).toFloat()
+                    val audioSelected = audioIdx == state.selectedAudioEventIndex
+                    val audioColor = if (audioSelected) Color.White else WorkbenchColors.Primary
                     drawRect(
-                        WorkbenchColors.Primary.copy(alpha = 0.7f),
+                        audioColor.copy(alpha = 0.7f),
                         Offset(x, audioTop + (hapticLane.height - barH) / 2f),
                         Size(wEv, barH),
                     )

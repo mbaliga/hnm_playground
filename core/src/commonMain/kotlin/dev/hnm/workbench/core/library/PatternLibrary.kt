@@ -31,7 +31,9 @@ class PatternLibrary(
             return PatternLibrary(LinkedHashMap<String, HapticAudioPattern>().apply { list.forEach { put(it.name, it) } })
         }
 
-        /** A starter library with the built-in reference patterns. */
-        fun withBuiltIns(): PatternLibrary = PatternLibrary().save(BuiltInPatterns.CONFIRM)
+        /** A starter library with all built-in reference patterns. */
+        fun withBuiltIns(): PatternLibrary = PatternLibrary().apply {
+            BuiltInPatterns.ALL.forEach { save(it) }
+        }
     }
 }

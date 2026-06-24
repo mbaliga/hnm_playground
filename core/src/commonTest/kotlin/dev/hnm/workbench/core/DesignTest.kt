@@ -55,16 +55,21 @@ class DesignTest {
     @Test
     fun libraryRoundTripsAndManagesEntries() {
         val lib = PatternLibrary.withBuiltIns()
-        lib.save(Variations.mutate(BuiltInPatterns.CONFIRM, seed = 1))
-        assertEquals(2, lib.size)
+        assertEquals(BuiltInPatterns.ALL.size, lib.size, "withBuiltIns() should contain all built-in patterns")
+
+        // mutate() appends " (var N)" so this is a *new* entry, growing the library by 1.
+        val mutated = Variations.mutate(BuiltInPatterns.CONFIRM, seed = 1)
+        lib.save(mutated)
+        assertEquals(BuiltInPatterns.ALL.size + 1, lib.size)
+        assertTrue(lib.names.contains(mutated.name))
 
         val restored = PatternLibrary.fromJson(lib.toJson())
         assertEquals(lib.names.toSet(), restored.names.toSet())
-        assertEquals(BuiltInPatterns.CONFIRM, restored.get("Confirm"))
+        assertEquals(BuiltInPatterns.CONFIRM, restored.get("Confirm"), "original Confirm should round-trip unchanged")
 
         restored.remove("Confirm")
         assertNull(restored.get("Confirm"))
-        assertEquals(1, restored.size)
+        assertEquals(BuiltInPatterns.ALL.size, restored.size) // back to all built-ins minus Confirm
     }
 
     @Test
