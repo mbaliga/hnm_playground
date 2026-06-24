@@ -15,6 +15,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import dev.hnm.workbench.core.design.MaterialPreset
+import dev.hnm.workbench.core.design.ModalSynth
 import dev.hnm.workbench.core.design.MotionPrimitive
 import dev.hnm.workbench.core.design.MotionPrimitives
 import dev.hnm.workbench.core.design.ParameterNavigator
@@ -67,6 +69,8 @@ class MainActivity : Activity() {
             texturePatterns().forEach { add(it) }
             // Stage-3 parameter navigator — feel a monotonically graded family between two feels.
             navigatorPatterns().forEach { add(it) }
+            // Stage-4 materials — strike a modal model; sound + felt ring-down from the same modes.
+            MaterialPreset.entries.forEach { add("Material · ${it.displayName}" to ModalSynth.toPattern(it.material)) }
         }
 
         val root = LinearLayout(this).apply {
@@ -176,7 +180,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.6 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.7 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"

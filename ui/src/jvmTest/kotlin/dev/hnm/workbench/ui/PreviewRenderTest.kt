@@ -100,4 +100,24 @@ class PreviewRenderTest {
             scene.close()
         }
     }
+
+    @Test
+    fun rendersEditorWithLoadedMaterial() {
+        // Exercises the Stage-4 path: a struck material (sound + haptics from one modal model) loaded.
+        val state = EditorState().apply {
+            load(dev.hnm.workbench.core.design.ModalSynth.toPattern(dev.hnm.workbench.core.design.MaterialPreset.METAL.material))
+        }
+        val scene = ImageComposeScene(width = 1180, height = 900, density = Density(1f)) {
+            WorkbenchApp(state)
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-material.png").writeBytes(png)
+            assertTrue(png.size > 5_000)
+        } finally {
+            scene.close()
+        }
+    }
 }

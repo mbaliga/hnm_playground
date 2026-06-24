@@ -1,6 +1,6 @@
 # Visual & Procedural Authoring Interfaces for Haptics: A Map of the Buildable and the Frontier
 
-> **Implementation status (Stages 1–3 landed).** The motion-primitive route is now live: `core`'s
+> **Implementation status (Stages 1–4 landed — full roadmap shipped).** The motion-primitive route is now live: `core`'s
 > `MotionPrimitives` generates the eight named primitives (Breath, Stir, Reform, Reach, Erupt,
 > Coalesce, Give, Settle) from deterministic spring-mass-damper / swell math — one value-over-time
 > curve that is both the on-screen motion and the haptic envelope. Oscillatory primitives render as
@@ -33,7 +33,23 @@
 > monotonic variation"* — is checked by `ParameterNavigatorTest` (texture crossing-counts and motion
 > oscillation-counts both vary monotonically across the family). A learned interpolator could later
 > replace the straight-line walk with a perceptually-shaped trajectory behind the same API.
-> ![navigator editor](workbench-navigator.png). Stage 4 remains the forward map.
+> ![navigator editor](workbench-navigator.png).
+>
+> **Stage 4 (physics/material + sound unification) is also live.** `core`'s `ModalSynth` implements the
+> centerpiece: one **modal model** (a struck object's vibration modes — decaying sinusoids) drives
+> *both* channels. Four material handles — stiffness (↑pitch), density (↓pitch), damping (↓ring),
+> brightness (↑upper modes) — set the modes; the audio track gets one decaying `OscEvent` per mode
+> (the contact sound) and the haptic track gets an impact `Transient` plus a `Continuous` ring whose
+> intensity follows the modal energy decay (the felt thud + ring-down). So a single material edit
+> audibly and haptically co-varies — Metal rings ~1.7 s in both ear and hand, Rubber is a dead thud.
+> Five presets (Wood/Metal/Glass/Rubber/Ceramic) plus a custom-material slider panel ship in the
+> editor (`MaterialPalette`) and the Android player (v0.7). The roadmap's Stage-4 threshold — *"a
+> single material edit audibly and haptically co-varies in a way users judge the same event"* — is
+> checked by `ModalSynthTest` (raising damping demonstrably shortens both the audio ring energy and
+> the felt ring duration). ![material editor](workbench-material.png).
+>
+> This completes the four-stage forward map (motion → texture → navigator → material). Everything flows
+> through the one `core` IR / renderer / exporters and is feel-testable on-device via the sideloadable APK.
 
 ## TL;DR
 - **The motion-primitive route is the right thing to build first.** Animation and haptics already share a time axis, so a named easing/spring vocabulary (Breath, Stir, Settle…) maps directly and reliably onto Android's envelope IR with essentially zero perceptual guesswork — it is both the most buildable-now and the most perceptually dependable of the three routes. Texture-fields are the most novel and inspiring but need perceptual tuning; physics/material is the most powerful but the most complex and should come last.

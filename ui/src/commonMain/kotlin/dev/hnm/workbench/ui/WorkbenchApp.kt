@@ -21,6 +21,7 @@ import dev.hnm.workbench.ui.components.CapabilityPanel
 import dev.hnm.workbench.ui.components.EnvelopeEditor
 import dev.hnm.workbench.ui.components.ExportPanel
 import dev.hnm.workbench.ui.components.InspectorPanel
+import dev.hnm.workbench.ui.components.MaterialPalette
 import dev.hnm.workbench.ui.components.MotionPalette
 import dev.hnm.workbench.ui.components.NavigatorPanel
 import dev.hnm.workbench.ui.components.PalettePanel
@@ -49,6 +50,7 @@ fun WorkbenchApp(state: EditorState = remember { EditorState() }) {
                         EnvelopeEditor(state)
                         MotionPalette(state)
                         TexturePalette(state)
+                        MaterialPalette(state)
                         NavigatorPanel(state)
                         PalettePanel(state)
                     }
