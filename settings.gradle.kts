@@ -36,8 +36,11 @@ if (androidSdkAvailable()) {
 // NOTE: `:backend-desktop` (controller HID backends) is described in docs/MODULES.md. It requires
 // native HID/SDL toolchains that are not provisioned here, so it is not wired in yet.
 
+// Android is opt-in via an EXPLICIT signal, not by sniffing ANDROID_HOME — hosted CI runners ship the
+// SDK preset, so sniffing would pull `:androidApp` (and a full Android toolchain) into the JVM-only CI
+// build. The Android APK workflow sets ENABLE_ANDROID=1; local dev is detected via local.properties.
 fun androidSdkAvailable(): Boolean {
-    if (System.getenv("ANDROID_HOME") != null || System.getenv("ANDROID_SDK_ROOT") != null) return true
+    if (System.getenv("ENABLE_ANDROID") == "1") return true
     val localProps = rootDir.resolve("local.properties")
     return localProps.exists() && localProps.readText().contains("sdk.dir")
 }

@@ -7,12 +7,13 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
-// Android is opt-in: only when an SDK is present (CI). This keeps `:ui` a JVM-only Compose module in
-// SDK-less environments (the desktop window + headless render tests still build), while letting CI add
-// a real `androidTarget()` so the Android app can host the very same `WorkbenchApp` composables. All
-// the composables live in commonMain, so this is purely a build-config addition.
-val androidEnabled = System.getenv("ANDROID_HOME") != null ||
-    System.getenv("ANDROID_SDK_ROOT") != null ||
+// Android is opt-in via an EXPLICIT signal (see :core for the full rationale) — never by sniffing
+// ANDROID_HOME, since hosted CI runners ship the SDK preset and would otherwise drag a full Android +
+// Compose toolchain into the JVM-only build. The Android APK workflow sets ENABLE_ANDROID=1; local dev
+// is detected via local.properties' sdk.dir. Everywhere else `:ui` stays a JVM-only Compose module
+// (the desktop window + headless render tests still build). All composables live in commonMain, so the
+// `androidTarget()` is purely a build-config addition that lets the Android app host the same UI.
+val androidEnabled = System.getenv("ENABLE_ANDROID") == "1" ||
     rootProject.file("local.properties").let { it.exists() && it.readText().contains("sdk.dir") }
 
 if (androidEnabled) {
@@ -60,7 +61,7 @@ kotlin {
 if (androidEnabled) {
     extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
         namespace = "dev.hnm.workbench.ui"
-        compileSdk = 34
+        compileSdk = 35
         defaultConfig {
             minSdk = 31
         }

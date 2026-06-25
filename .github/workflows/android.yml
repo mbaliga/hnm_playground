@@ -23,6 +23,10 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    # Explicit opt-in so the Gradle build wires the Android target / :androidApp module (the modules
+    # gate on this rather than sniffing the runner's preset ANDROID_HOME).
+    env:
+      ENABLE_ANDROID: "1"
     steps:
       - uses: actions/checkout@v4
 

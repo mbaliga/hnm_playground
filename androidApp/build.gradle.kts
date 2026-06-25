@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "dev.hnm.workbench.android"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "dev.hnm.workbench.android"
