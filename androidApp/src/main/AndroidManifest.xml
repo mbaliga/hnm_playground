@@ -5,17 +5,26 @@
 
     <application
         android:allowBackup="true"
-        android:label="Haptics Player"
+        android:label="Haptics Workbench"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.DarkActionBar">
 
+        <!-- Main experience: the Compose workbench (design + feel on the real actuator). -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
+            android:name=".WorkbenchActivity"
+            android:exported="true"
+            android:label="Haptics Workbench"
+            android:theme="@android:style/Theme.Material.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The flat feel-test gallery, reachable from the workbench's "Gallery" button. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="Feel-test gallery" />
     </application>
 </manifest>

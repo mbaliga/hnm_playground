@@ -27,6 +27,7 @@ import dev.hnm.workbench.core.ir.Waveform
 import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.core.library.PatternLibrary
 import dev.hnm.workbench.core.playback.HapticCapabilities
+import dev.hnm.workbench.core.playback.PatternPlayer
 
 /** The format shown in the export panel. */
 enum class ExportKind { JSON, KOTLIN, AHAP }
@@ -44,6 +45,18 @@ class EditorState {
     var selectedEventIndex by mutableStateOf<Int?>(0)
     var exportKind by mutableStateOf(ExportKind.KOTLIN)
     private var variationSeed = 1
+
+    /**
+     * How the current pattern gets felt. Defaults to [PatternPlayer.None] (desktop has no actuator);
+     * the Android host injects a real player wired to the device's vibrator + speaker.
+     */
+    var player: PatternPlayer = PatternPlayer.None
+
+    /** Whether playback is even possible in this host (drives the Play button's enabled state). */
+    val canPlay: Boolean get() = player !== PatternPlayer.None
+
+    /** Feel the current pattern on the device, if a real player is wired. */
+    fun playCurrent() = player.play(pattern)
 
     // --- library -----------------------------------------------------------
 

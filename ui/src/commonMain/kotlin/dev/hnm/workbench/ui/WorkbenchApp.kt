@@ -8,11 +8,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -40,11 +45,14 @@ import dev.hnm.workbench.ui.theme.WorkbenchTheme
  * export preview. All state lives in one [EditorState]; every panel reads and edits the same IR.
  */
 @Composable
-fun WorkbenchApp(state: EditorState = remember { EditorState() }) {
+fun WorkbenchApp(
+    state: EditorState = remember { EditorState() },
+    onOpenGallery: (() -> Unit)? = null,
+) {
     WorkbenchTheme {
         Surface(Modifier.fillMaxSize(), color = WorkbenchColors.Background) {
             Column(Modifier.fillMaxSize().padding(16.dp)) {
-                Header(state)
+                Header(state, onOpenGallery)
                 HorizontalDivider(Modifier.padding(vertical = 12.dp), color = WorkbenchColors.Grid)
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Design column — scrollable; everything the author touches.
@@ -80,15 +88,33 @@ fun WorkbenchApp(state: EditorState = remember { EditorState() }) {
 }
 
 @Composable
-private fun Header(state: EditorState) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+private fun Header(state: EditorState, onOpenGallery: (() -> Unit)?) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Column {
             Text("Haptics + Audio Workbench", color = WorkbenchColors.OnSurface, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text("design · feel · export", color = WorkbenchColors.Muted, fontSize = 12.sp)
         }
-        Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-            Text(state.pattern.name, color = WorkbenchColors.Primary, fontSize = 16.sp)
-            Text("${state.hapticEvents.size} haptic · ${state.audioEvents.size} audio", color = WorkbenchColors.Muted, fontSize = 12.sp)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(horizontalAlignment = Alignment.End) {
+                Text(state.pattern.name, color = WorkbenchColors.Primary, fontSize = 16.sp)
+                Text("${state.hapticEvents.size} haptic · ${state.audioEvents.size} audio", color = WorkbenchColors.Muted, fontSize = 12.sp)
+            }
+            // Optional jump to the feel-test gallery (Android only; desktop passes null).
+            if (onOpenGallery != null) {
+                OutlinedButton(onClick = onOpenGallery, modifier = Modifier.height(44.dp)) {
+                    Text("Gallery", fontSize = 13.sp)
+                }
+            }
+            // The Play button only does something on a host with a real actuator (Android); on desktop
+            // it stays disabled because there's nothing to feel.
+            Button(
+                onClick = { state.playCurrent() },
+                enabled = state.canPlay,
+                colors = ButtonDefaults.buttonColors(containerColor = WorkbenchColors.Primary),
+                modifier = Modifier.height(44.dp),
+            ) {
+                Text(if (state.canPlay) "▶ Play" else "▶ (desktop)", fontSize = 14.sp)
+            }
         }
     }
 }

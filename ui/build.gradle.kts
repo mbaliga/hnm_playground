@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -6,8 +7,32 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+// Android is opt-in: only when an SDK is present (CI). This keeps `:ui` a JVM-only Compose module in
+// SDK-less environments (the desktop window + headless render tests still build), while letting CI add
+// a real `androidTarget()` so the Android app can host the very same `WorkbenchApp` composables. All
+// the composables live in commonMain, so this is purely a build-config addition.
+val androidEnabled = System.getenv("ANDROID_HOME") != null ||
+    System.getenv("ANDROID_SDK_ROOT") != null ||
+    rootProject.file("local.properties").let { it.exists() && it.readText().contains("sdk.dir") }
+
+if (androidEnabled) {
+    pluginManager.apply("com.android.library")
+}
+
 kotlin {
     jvm()
+
+    if (androidEnabled) {
+        androidTarget {
+            compilations.all {
+                compileTaskProvider.configure {
+                    compilerOptions {
+                        jvmTarget.set(JvmTarget.JVM_17)
+                    }
+                }
+            }
+        }
+    }
 
     sourceSets {
         commonMain {
@@ -28,6 +53,20 @@ kotlin {
             dependencies {
                 implementation(kotlin("test"))
             }
+        }
+    }
+}
+
+if (androidEnabled) {
+    extensions.configure<com.android.build.gradle.LibraryExtension>("android") {
+        namespace = "dev.hnm.workbench.ui"
+        compileSdk = 34
+        defaultConfig {
+            minSdk = 31
+        }
+        compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
         }
     }
 }

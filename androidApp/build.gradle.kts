@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
+    // Compose Multiplatform + compiler so the app can host the shared `WorkbenchApp` composables.
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
 }
 
 android {
@@ -11,8 +14,8 @@ android {
         applicationId = "dev.hnm.workbench.android"
         minSdk = 31 // VibratorManager + VibrationEffect.Composition primitives
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.8.0"
+        versionCode = 10
+        versionName = "0.9.0"
     }
 
     buildTypes {
@@ -35,4 +38,14 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    // The shared Compose workbench UI (timeline, palettes, library, inspector, export).
+    implementation(project(":ui"))
+
+    // Compose runtime/UI for Android, sourced from the Compose Multiplatform plugin's `compose` DSL.
+    implementation(compose.runtime)
+    implementation(compose.foundation)
+    implementation(compose.material3)
+    implementation(compose.ui)
+    // `setContent { }` entrypoint for a ComponentActivity.
+    implementation(libs.androidx.activity.compose)
 }
