@@ -3,11 +3,8 @@ package dev.hnm.workbench.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,8 +32,9 @@ fun ExportPanel(state: EditorState, modifier: Modifier = Modifier) {
                 )
             }
         }
-        val scroll = rememberScrollState()
-        Column(Modifier.fillMaxSize().padding(top = 8.dp).verticalScroll(scroll)) {
+        // No internal scroll/fillMaxSize: this panel always sits inside a scrolling parent column, so a
+        // nested scroll here would measure with infinite height. Lay out at natural height instead.
+        Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Text(
                 state.exportText(),
                 color = WorkbenchColors.OnSurface,

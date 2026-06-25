@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import dev.hnm.workbench.core.design.HybridPatternGenerator
+import dev.hnm.workbench.core.design.PatternGenerator
 import dev.hnm.workbench.core.design.RhythmCapture
 import dev.hnm.workbench.core.design.Tap
 import dev.hnm.workbench.core.design.Variations
@@ -57,6 +59,45 @@ class EditorState {
 
     /** Feel the current pattern on the device, if a real player is wired. */
     fun playCurrent() = player.play(pattern)
+
+    // --- AI assistant ------------------------------------------------------
+
+    /**
+     * The intent→pattern engine. Defaults to the hybrid generator (on-device, offline). A host can
+     * swap in a generator with a cloud backend wired for richer free-text understanding.
+     */
+    var generator: PatternGenerator = HybridPatternGenerator()
+
+    /** The assistant's last plain-language explanation (what it made and why). Null until first use. */
+    var assistantMessage by mutableStateOf<String?>(null)
+        private set
+
+    var isGenerating by mutableStateOf(false)
+        private set
+
+    /** The most recent prompt, kept so the UI text field survives recomposition. */
+    var lastPrompt by mutableStateOf("")
+
+    /**
+     * Generate (or edit) from a natural-language prompt. Routes through [generator]: if the prompt
+     * reads as an edit ("softer", "longer") it adjusts the current pattern; otherwise it creates one.
+     * Auto-plays the result when a real actuator is wired so you immediately feel what you described.
+     */
+    suspend fun generate(prompt: String) {
+        if (prompt.isBlank()) return
+        isGenerating = true
+        try {
+            val result = generator.generate(prompt, pattern)
+            load(result.pattern)
+            assistantMessage = result.explanation
+            lastPrompt = prompt
+            if (canPlay) playCurrent()
+        } catch (t: Throwable) {
+            assistantMessage = "Couldn't generate that: ${t.message ?: "unknown error"}. Try simpler words like \"sharp tap\" or \"soft buzz\"."
+        } finally {
+            isGenerating = false
+        }
+    }
 
     // --- library -----------------------------------------------------------
 

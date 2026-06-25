@@ -102,6 +102,44 @@ class PreviewRenderTest {
     }
 
     @Test
+    fun rendersNarrowPhoneLayout() {
+        // Exercises the responsive single-column path at phone width (< 720dp): walkthrough + assistant
+        // + stacked panels must compose without the desktop two-column layout.
+        val scene = ImageComposeScene(width = 400, height = 1600, density = Density(1f)) {
+            WorkbenchApp()
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-phone.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "narrow layout didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersAssistantGeneratedPattern() = kotlinx.coroutines.test.runTest {
+        // Exercises the AI path end-to-end: generate from a prompt, load it, and render the editor.
+        val state = EditorState()
+        state.generate("urgent alert")
+        assertTrue(state.assistantMessage != null, "assistant should have explained its work")
+        val scene = ImageComposeScene(width = 1180, height = 900, density = Density(1f)) {
+            WorkbenchApp(state)
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-assistant.png").writeBytes(png)
+            assertTrue(png.size > 5_000)
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
     fun rendersEditorWithLoadedMaterial() {
         // Exercises the Stage-4 path: a struck material (sound + haptics from one modal model) loaded.
         val state = EditorState().apply {
