@@ -76,7 +76,8 @@ class MainActivity : Activity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#14161B"))
+            // Premium dark brushed-metal aesthetic
+            setBackgroundColor(Color.parseColor("#0F1013"))
             setPadding(dp(20), dp(24), dp(20), dp(24))
         }
         root.addView(title("Haptics + Audio Player"))
@@ -87,6 +88,8 @@ class MainActivity : Activity() {
         root.addView(
             Button(this).apply {
                 text = "▶  Vibration self-test (strong)"
+                setBackgroundColor(Color.parseColor("#E74C3C")) // Red accent
+                setTextColor(Color.parseColor("#FFFFFF"))
                 setOnClickListener {
                     AndroidHaptics.selfTest(vibrator, handler) { toast(it) }
                 }
@@ -222,6 +225,8 @@ class MainActivity : Activity() {
             addView(
                 Button(this@MainActivity).apply {
                     text = "Play"
+                    setBackgroundColor(Color.parseColor("#E74C3C")) // Red accent
+                    setTextColor(Color.parseColor("#FFFFFF"))
                     setOnClickListener { play(pattern) }
                 },
             )

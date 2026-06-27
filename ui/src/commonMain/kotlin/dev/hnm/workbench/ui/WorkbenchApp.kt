@@ -1,5 +1,6 @@
 package dev.hnm.workbench.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -21,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +42,7 @@ import dev.hnm.workbench.ui.components.TexturePalette
 import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.components.WalkthroughCard
 import dev.hnm.workbench.ui.model.EditorState
+import dev.hnm.workbench.ui.theme.TextureShaders
 import dev.hnm.workbench.ui.theme.WorkbenchColors
 import dev.hnm.workbench.ui.theme.WorkbenchTheme
 
@@ -135,10 +139,12 @@ private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Header(state: EditorState, onOpenGallery: (() -> Unit)?) {
-    // FlowRow so the title block and the action buttons wrap onto a second line on a narrow screen
-    // instead of overlapping (the bug on phones).
     FlowRow(
-        Modifier.fillMaxWidth(),
+        Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, shape = RoundedCornerShape(8.dp))
+            .background(WorkbenchColors.Surface, shape = RoundedCornerShape(8.dp))
+            .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -157,7 +163,7 @@ private fun Header(state: EditorState, onOpenGallery: (() -> Unit)?) {
             Button(
                 onClick = { state.playCurrent() },
                 enabled = state.canPlay,
-                colors = ButtonDefaults.buttonColors(containerColor = WorkbenchColors.Primary),
+                colors = ButtonDefaults.buttonColors(containerColor = WorkbenchColors.Accent),
             ) {
                 Text(if (state.canPlay) "▶ Play" else "▶ (desktop)", fontSize = 14.sp)
             }
