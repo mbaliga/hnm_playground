@@ -15,9 +15,11 @@ import dev.hnm.workbench.core.ir.HapticTrack
 import dev.hnm.workbench.core.ir.Primitive
 import dev.hnm.workbench.core.ir.PrimitiveType
 import dev.hnm.workbench.core.ir.Transient
+import dev.hnm.workbench.core.device.DeviceProfile
 import dev.hnm.workbench.core.playback.ActuatorType
 import dev.hnm.workbench.core.playback.HapticCapabilities
 import dev.hnm.workbench.core.playback.HapticCommand
+import dev.hnm.workbench.core.playback.PlayEnvelope
 import dev.hnm.workbench.core.playback.PlayOneShot
 import dev.hnm.workbench.core.playback.PlayPrimitive
 import dev.hnm.workbench.core.playback.PlayWaveform
@@ -67,6 +69,46 @@ object AndroidHaptics {
             supportedPrimitives = supported,
             hasFrequencyControl = false, // Android exposes no public PWLE/frequency API.
             actuatorType = actuator,
+        )
+    }
+
+    /**
+     * Capture this device into a portable [DeviceProfile] for the device database — the data users can
+     * export to grow the shared catalog and that backs the target-device simulator.
+     *
+     * Reads the real introspection APIs at the level the compile SDK exposes:
+     *  - resonant frequency + Q factor are API 34 (`getResonantFrequency()` / `getQFactor()`), guarded.
+     *  - envelope/PWLE support (`areEnvelopeEffectsSupported()`, API 36) isn't in this compile SDK, so it
+     *    is reported false here; bump compileSdk to 36 to populate it. Frequency control stays false
+     *    because no public PWLE API exists below Android 16.
+     */
+    fun probeProfile(vibrator: Vibrator): DeviceProfile {
+        val caps = probe(vibrator)
+        var resonant: Double? = null
+        var q: Double? = null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) { // API 34
+            vibrator.resonantFrequency.takeIf { !it.isNaN() }?.let { resonant = it.toDouble() }
+            vibrator.qFactor.takeIf { !it.isNaN() }?.let { q = it.toDouble() }
+        }
+        val slug = "${Build.MANUFACTURER}-${Build.MODEL}"
+            .lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+        return DeviceProfile(
+            id = slug.ifEmpty { "unknown-device" },
+            manufacturer = Build.MANUFACTURER ?: "unknown",
+            model = Build.MODEL ?: "unknown",
+            marketName = "${Build.MANUFACTURER} ${Build.MODEL}",
+            platform = DeviceProfile.Platform.ANDROID,
+            os = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
+            actuatorType = caps.actuatorType,
+            hasAmplitudeControl = caps.hasAmplitudeControl,
+            supportedPrimitives = caps.supportedPrimitives,
+            supportedEffects = supportedEffects(vibrator),
+            hasFrequencyControl = false,
+            hasEnvelopeControl = false,
+            resonantFrequencyHz = resonant,
+            qFactor = q,
+            source = DeviceProfile.Source.PROBED,
+            notes = actuatorLabel(caps),
         )
     }
 
@@ -140,6 +182,7 @@ object AndroidHaptics {
             when (c) {
                 is PlayPrimitive -> "${c.type}@${ms}ms×${(c.scale * 100).toInt()}%"
                 is PlayWaveform -> "waveform@${ms}ms(${c.timingsMs.size} steps)"
+                is PlayEnvelope -> "envelope@${ms}ms(${c.points.size} pts, ${c.points.firstOrNull()?.frequencyHz?.toInt() ?: 0}Hz)"
                 is PlayOneShot -> "oneshot@${ms}ms(${c.durationMs}ms,a=${c.amplitude})"
                 else -> c.toString()
             }
@@ -208,6 +251,18 @@ object AndroidHaptics {
                         val amp = command.amplitudes.getOrElse(i) { 0 }
                         if (amp > 0) segments += Seg(startMs + local, command.timingsMs[i].coerceAtLeast(1L), amp.coerceIn(1, 255))
                         local += command.timingsMs[i]
+                    }
+                }
+                is PlayEnvelope -> {
+                    // True PWLE (amplitude+frequency) needs Android 16 WaveformEnvelopeBuilder (API 36),
+                    // which is above this compile SDK — so collapse to an amplitude waveform here. The
+                    // frequency contour is preserved in the IR/core and surfaces on capable hardware once
+                    // compileSdk is bumped to 36. See AndroidHaptics.probeProfile() KDoc.
+                    command.points.forEachIndexed { i, p ->
+                        val nextMs = command.points.getOrNull(i + 1)?.timeMs ?: (p.timeMs + 16L)
+                        val durMs = (nextMs - p.timeMs).coerceAtLeast(1L)
+                        val amp = (p.amplitude * 255).toInt().coerceIn(0, 255)
+                        if (amp > 0) segments += Seg(startMs + p.timeMs, durMs, amp.coerceIn(1, 255))
                     }
                 }
                 else -> {}

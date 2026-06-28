@@ -138,3 +138,22 @@ data class PlayOneShot(
     val durationMs: Long,
     val amplitude: Int, // 0..255; use 255 for "default" on no-amplitude-control hardware
 ) : HapticCommand
+
+/**
+ * A control point of an amplitude+frequency envelope for wideband / PWLE-capable hardware.
+ * @param timeMs offset from the envelope start.
+ * @param amplitude 0..1 perceived strength.
+ * @param frequencyHz target vibration frequency (the actuator is driven toward this within its band).
+ */
+data class EnvelopePoint(val timeMs: Long, val amplitude: Float, val frequencyHz: Float)
+
+/**
+ * A smooth amplitude+frequency envelope — the richest path, for actuators that expose real frequency
+ * control (Android 16 `WaveformEnvelopeBuilder`, voice-coils like DualSense). Backends without envelope
+ * support fall back to a sampled [PlayWaveform] (amplitude only). This is what lets one authored
+ * Continuous event resynthesize to "HD" haptics on capable hardware instead of a flat buzz.
+ */
+data class PlayEnvelope(
+    override val atSeconds: Seconds,
+    val points: List<EnvelopePoint>,
+) : HapticCommand

@@ -1,6 +1,9 @@
 package dev.hnm.workbench.android
 
 import android.app.Activity
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -32,6 +35,7 @@ import dev.hnm.workbench.core.design.TextureField
 import dev.hnm.workbench.core.design.TextureFieldType
 import dev.hnm.workbench.core.design.TextureFields
 import dev.hnm.workbench.core.design.Variations
+import dev.hnm.workbench.core.device.DeviceDatabase
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
 import dev.hnm.workbench.core.ir.Continuous
 import dev.hnm.workbench.core.ir.Envelope
@@ -132,6 +136,26 @@ class MainActivity : Activity() {
             AndroidHaptics.selfTest(vibrator, handler) { toast(it) }
         })
         screen.addView(caption("Check Settings → Sound & vibration if you can't feel this."))
+        screen.addView(spacer(dp(8)))
+
+        // Export this device's capabilities so it can be contributed to the shared device database.
+        val reportView = TextView(this).apply {
+            setTextColor(C_INK_DIM)
+            textSize = 10f
+            setTextIsSelectable(true)
+            typeface = Typeface.MONOSPACE
+            visibility = View.GONE
+        }
+        screen.addView(outlineButton("⎘  Capture device capability report") {
+            val profile = AndroidHaptics.probeProfile(vibrator)
+            val reportJson = DeviceDatabase(listOf(profile)).toJson()
+            val clip = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clip.setPrimaryClip(ClipData.newPlainText("device capability report", reportJson))
+            reportView.text = reportJson
+            reportView.visibility = View.VISIBLE
+            toast("Copied — paste into a GitHub issue to grow the device DB")
+        })
+        screen.addView(reportView)
         screen.addView(spacer(dp(12)))
 
         // Pattern list rows
@@ -223,7 +247,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.12 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.13 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"

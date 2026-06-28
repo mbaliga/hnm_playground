@@ -38,6 +38,7 @@ import dev.hnm.workbench.ui.components.CapabilityPanel
 import dev.hnm.workbench.ui.components.EnvelopeEditor
 import dev.hnm.workbench.ui.components.ExportPanel
 import dev.hnm.workbench.ui.components.GlyphRec
+import dev.hnm.workbench.ui.components.ImportPanel
 import dev.hnm.workbench.ui.components.GlyphStop
 import dev.hnm.workbench.ui.components.InspectorPanel
 import dev.hnm.workbench.ui.components.KeypadCell
@@ -105,6 +106,7 @@ private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
             CapabilityPanel(state)
             EnvelopeEditor(state)
             LibraryPanel(state)
+            ImportPanel(state)
             RhythmCapturePanel(state)
             HorizontalDivider(color = WorkbenchColors.Grid)
             MotionPalette(state)
@@ -136,6 +138,7 @@ private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
                 EnvelopeEditor(state)
                 HorizontalDivider(color = WorkbenchColors.Grid)
                 LibraryPanel(state)
+                ImportPanel(state)
                 HorizontalDivider(color = WorkbenchColors.Grid)
                 RhythmCapturePanel(state)
                 HorizontalDivider(color = WorkbenchColors.Grid)

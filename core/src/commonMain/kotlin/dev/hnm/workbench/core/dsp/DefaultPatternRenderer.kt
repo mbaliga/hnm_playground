@@ -22,7 +22,9 @@ import dev.hnm.workbench.core.playback.ArrayFloatStream
 import dev.hnm.workbench.core.playback.FloatStream
 import dev.hnm.workbench.core.playback.HapticCapabilities
 import dev.hnm.workbench.core.playback.HapticCommand
+import dev.hnm.workbench.core.playback.EnvelopePoint
 import dev.hnm.workbench.core.playback.PatternRenderer
+import dev.hnm.workbench.core.playback.PlayEnvelope
 import dev.hnm.workbench.core.playback.PlayOneShot
 import dev.hnm.workbench.core.playback.PlayPrimitive
 import dev.hnm.workbench.core.playback.PlayWaveform
@@ -272,6 +274,11 @@ class DefaultPatternRenderer(
             // Degrade: a single on/off buzz for the held duration (ignore envelope shape).
             return listOf(PlayOneShot(e.time, (e.duration * 1000).toLong().coerceAtLeast(1), 255))
         }
+        // Richest path: wideband/PWLE hardware gets a smooth amplitude+frequency envelope so sharpness
+        // becomes a real frequency contour, not just a fixed carrier. Falls back to amplitude waveform.
+        if (caps.hasFrequencyControl) {
+            return listOf(scheduleEnvelope(e, shaper, intensityCurve))
+        }
         // Pre-sample the envelope (and any intensity curve) into amplitude steps for createWaveform.
         val stepMs = 16L
         val steps = max(1, (shaper.totalDuration * 1000 / stepMs).roundToInt())
@@ -283,6 +290,26 @@ class DefaultPatternRenderer(
             HapticMapping.intensityToAmplitude255(e.intensity * curveMul * shaper.gainAt(local))
         }
         return listOf(PlayWaveform(e.time, timings, amps, repeat = -1))
+    }
+
+    /** Sample a Continuous event into an amplitude+frequency envelope for PWLE-capable hardware. */
+    private fun scheduleEnvelope(
+        e: Continuous,
+        shaper: EnvelopeShaper,
+        intensityCurve: ParameterCurve?,
+    ): PlayEnvelope {
+        val stepMs = 16L
+        val steps = max(2, (shaper.totalDuration * 1000 / stepMs).roundToInt())
+        val freq = HapticMapping.sharpnessToEnvelopeHz(e.sharpness)
+        val points = ArrayList<EnvelopePoint>(steps)
+        for (i in 0 until steps) {
+            val local = i * stepMs / 1000.0
+            val absT = e.time + local
+            val curveMul = intensityCurve?.let { CurveSampler(it).valueAt(absT) } ?: 1.0
+            val amp = (e.intensity * curveMul * shaper.gainAt(local)).coerceIn(0.0, 1.0).toFloat()
+            points += EnvelopePoint(timeMs = i * stepMs, amplitude = amp, frequencyHz = freq)
+        }
+        return PlayEnvelope(e.time, points)
     }
 
     private fun schedulePrimitive(e: Primitive, caps: HapticCapabilities): List<HapticCommand> {

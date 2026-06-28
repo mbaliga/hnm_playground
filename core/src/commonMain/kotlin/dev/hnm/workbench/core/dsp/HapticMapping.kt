@@ -21,6 +21,13 @@ object HapticMapping {
     }
 
     /**
+     * Target frequency (Hz) for the wideband/PWLE envelope path. Same perceptual axis as
+     * [sharpnessToCarrierHz] but expressed for actuators with a real frequency band so a "sharp"
+     * continuous event actually rises in pitch rather than only getting a different carrier.
+     */
+    fun sharpnessToEnvelopeHz(sharpness: Double): Float = sharpnessToCarrierHz(sharpness).toFloat()
+
+    /**
      * Composition-primitive selection for a transient when no frequency control exists: sharp -> TICK,
      * mid -> CLICK, dull -> THUD. Honoured only for primitives the device actually supports.
      */

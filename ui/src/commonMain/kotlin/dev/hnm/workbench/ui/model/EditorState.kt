@@ -12,6 +12,7 @@ import dev.hnm.workbench.core.design.Variations
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
 import dev.hnm.workbench.core.dsp.PatternTiming
 import dev.hnm.workbench.core.export.AhapExporter
+import dev.hnm.workbench.core.export.AhapImporter
 import dev.hnm.workbench.core.export.KotlinVibrationEffectExporter
 import dev.hnm.workbench.core.ir.AudioEvent
 import dev.hnm.workbench.core.ir.AudioTrack
@@ -97,6 +98,28 @@ class EditorState {
         } finally {
             isGenerating = false
         }
+    }
+
+    // --- import ------------------------------------------------------------
+
+    /** Result of the last AHAP import attempt (success summary or error). Null until first use. */
+    var importMessage by mutableStateOf<String?>(null)
+        private set
+
+    /**
+     * Import an Apple AHAP (Haptic and Audio Pattern) JSON document into the editor — the "borrow from
+     * the ecosystem" path. Loads on success and reports a summary; never throws.
+     */
+    fun importAhap(text: String): Boolean {
+        if (text.isBlank()) { importMessage = "Paste AHAP JSON first."; return false }
+        val imported = AhapImporter.importOrNull(text)
+        if (imported == null) {
+            importMessage = "That doesn't look like valid AHAP JSON."
+            return false
+        }
+        load(imported)
+        importMessage = "Imported \"${imported.name}\" — ${hapticEvents.size} haptic events."
+        return true
     }
 
     // --- library -----------------------------------------------------------
