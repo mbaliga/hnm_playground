@@ -2,12 +2,21 @@ package dev.hnm.workbench.android
 
 import android.app.Activity
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Shader
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.OvalShape
+import android.graphics.drawable.shapes.RoundRectShape
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Vibrator
+import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.Button
@@ -34,11 +43,27 @@ import dev.hnm.workbench.core.ir.HapticTrack
 import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.core.playback.HapticCapabilities
 
+// ---- HTML color constants (ported from --css-vars) ----
+private val C_SCREEN   = Color.parseColor("#0B0B0B")
+private val C_INK      = Color.parseColor("#EFEEEC")
+private val C_INK_DIM  = Color.parseColor("#C8C7C4")
+private val C_BAR      = Color.parseColor("#E9E9E6")
+private val C_RED      = Color.parseColor("#E22C24")
+private val C_HOUSING  = Color.parseColor("#E9E8E5")
+private val C_HOUSE_EDGE = Color.parseColor("#D6D5D1")
+private val C_FRAME    = Color.parseColor("#ECEBE8")
+private val C_GRILLE   = Color.parseColor("#C3C2BF")
+private val C_ICON     = Color.parseColor("#A9A8A5")
+private val C_DOME_HI  = Color.parseColor("#FFFFFF")
+private val C_DOME_LO  = Color.parseColor("#DEDCD8")
+private val C_BATT_BG  = Color.parseColor("#0E0E0E")
+
 /**
- * The on-device player. It lists the built-in pattern, generated variations, a captured rhythm and a
- * sustained-buzz demo, and plays each on the phone's real actuator + speaker via the same `core`
- * IR/renderer used everywhere else. A self-test and on-screen diagnostics make it clear what the
- * device reported and what's actually being sent to the vibrator.
+ * On-device player with the full recorder aesthetic:
+ *   • Dark screen area (#0b0b0b) for pattern list / waveform
+ *   • Light housing area with dome-style Play buttons
+ *   • Battery badge + speaker grille in the chin
+ *   • Red (#e22c24) active accent
  */
 class MainActivity : Activity() {
 
@@ -55,52 +80,68 @@ class MainActivity : Activity() {
         capabilities = AndroidHaptics.probe(vibrator)
 
         val patterns = buildList {
-            // Built-in reference vocabulary.
             BuiltInPatterns.ALL.forEach { add(it.name to it) }
             add("Strong buzz (400 ms)" to strongBuzz())
             Variations.family(BuiltInPatterns.CONFIRM, count = 3).forEachIndexed { i, p ->
                 add("Confirm · variation ${i + 1}" to p)
             }
             add("Captured rhythm" to capturedRhythm())
-            // Stage-1 motion primitives — feel the spring/swell vocabulary on the real actuator.
             MotionPrimitive.entries.forEach { p ->
                 add("Motion · ${p.displayName}" to MotionPrimitives.toPattern(p))
             }
-            // Stage-2 texture fields — feel smooth→rough across all four field types.
             texturePatterns().forEach { add(it) }
-            // Stage-3 parameter navigator — feel a monotonically graded family between two feels.
             navigatorPatterns().forEach { add(it) }
-            // Stage-4 materials — strike a modal model; sound + felt ring-down from the same modes.
             MaterialPreset.entries.forEach { add("Material · ${it.displayName}" to ModalSynth.toPattern(it.material)) }
         }
 
-        val root = LinearLayout(this).apply {
+        // ---- outer device shell (warm gray frame) ----
+        val shell = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            // Premium dark brushed-metal aesthetic
-            setBackgroundColor(Color.parseColor("#0F1013"))
-            setPadding(dp(20), dp(24), dp(20), dp(24))
+            setBackgroundColor(C_FRAME)
+            // Rounded corners via outline (API 21+)
         }
-        root.addView(title("Haptics + Audio Player"))
-        root.addView(caption(diagnostics()))
-        root.addView(spacer(dp(10)))
 
-        // Self-test: an unmistakable buzz to confirm the actuator works independent of any pattern.
-        root.addView(
-            Button(this).apply {
-                text = "▶  Vibration self-test (strong)"
-                setBackgroundColor(Color.parseColor("#E74C3C")) // Red accent
-                setTextColor(Color.parseColor("#FFFFFF"))
-                setOnClickListener {
-                    AndroidHaptics.selfTest(vibrator, handler) { toast(it) }
-                }
-            },
-        )
-        root.addView(caption("If you can't feel the self-test, check Settings → Sound & vibration → vibration intensity, and that the phone isn't in a mode that mutes haptics."))
-        root.addView(spacer(dp(12)))
+        // ---- screen area (dark) ----
+        val screen = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(C_SCREEN)
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+        }
 
-        patterns.forEach { (name, pattern) -> root.addView(patternRow(name, pattern)) }
+        // Status bar row
+        screen.addView(statusBar())
+        screen.addView(spacer(dp(12)))
+        screen.addView(title("Haptics + Audio Player"))
+        screen.addView(caption(diagnostics()))
+        screen.addView(spacer(dp(10)))
 
-        val scroll = ScrollView(this).apply { addView(root) }
+        // Self-test button in screen area (outlined style)
+        screen.addView(outlineButton("▶  Vibration self-test (strong)") {
+            AndroidHaptics.selfTest(vibrator, handler) { toast(it) }
+        })
+        screen.addView(caption("Check Settings → Sound & vibration if you can't feel this."))
+        screen.addView(spacer(dp(12)))
+
+        // Pattern list rows
+        patterns.forEach { (name, pattern) -> screen.addView(patternRow(name, pattern)) }
+
+        shell.addView(screen, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+
+        // ---- chin row (battery + grille) ----
+        shell.addView(chinRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+
+        // ---- housing / controls area (light) ----
+        val housing = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(C_HOUSING)
+            setPadding(dp(18), dp(16), dp(18), dp(22))
+        }
+        shell.addView(housing, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+
+        val scroll = ScrollView(this).apply {
+            addView(shell)
+            setBackgroundColor(C_FRAME)
+        }
         setContentView(scroll)
     }
 
@@ -111,7 +152,6 @@ class MainActivity : Activity() {
     }
 
     private fun play(pattern: HapticAudioPattern) {
-        // Render both paths first, then trigger together so they stay coincident.
         val commands = renderer.scheduleHaptics(pattern, capabilities)
         val stream = renderer.renderAudio(pattern, SAMPLE_RATE)
         AndroidHaptics.playPattern(vibrator, pattern, commands, handler) { toast(it) }
@@ -137,10 +177,6 @@ class MainActivity : Activity() {
             ),
         )
 
-    /**
-     * Three roughness levels × all four texture types = 12 texture demos.
-     * Slow, medium, and fast scrub velocities let you feel the velocity→frequency mapping on the actuator.
-     */
     private fun texturePatterns(): List<Pair<String, HapticAudioPattern>> {
         val roughnesses = listOf(0.2 to "smooth", 0.5 to "mid", 0.85 to "rough")
         val velocities = listOf(0.5 to "slow", 1.5 to "fast")
@@ -151,7 +187,6 @@ class MainActivity : Activity() {
                     add("Texture · ${type.displayName} · $rLabel" to TextureFields.toPattern(field))
                 }
             }
-            // Velocity comparison pair using Perlin mid-roughness.
             val midPerlin = TextureField(type = TextureFieldType.PERLIN, roughness = 0.5)
             for ((v, vLabel) in velocities) {
                 add("Texture · Perlin mid · $vLabel scrub" to TextureFields.toPattern(midPerlin, velocity = v))
@@ -159,10 +194,6 @@ class MainActivity : Activity() {
         }
     }
 
-    /**
-     * Stage-3 graded families: a Perlin smooth→rough texture walk and a Stir→Settle motion morph,
-     * each in 5 steps. Played in order, they should feel like a monotonic gradient, not random steps.
-     */
     private fun navigatorPatterns(): List<Pair<String, HapticAudioPattern>> = buildList {
         ParameterNavigator.textureFamilyPatterns(
             TextureField(type = TextureFieldType.PERLIN, roughness = 0.05),
@@ -184,7 +215,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.10 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.11 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"
@@ -194,14 +225,87 @@ class MainActivity : Activity() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
-    // --- tiny view helpers (no XML / appcompat to keep the build minimal) ---
+    // ---- view helpers matching the HTML components ----
 
+    /** Status bar: red dot + app name + pattern count, on the dark screen. */
+    private fun statusBar(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(
+                View(this@MainActivity).apply {
+                    // Red recording dot
+                    background = ShapeDrawable(OvalShape()).also { s ->
+                        s.paint.color = C_RED
+                    }
+                    layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).also {
+                        it.marginEnd = dp(8)
+                    }
+                }
+            )
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = "HAPTICS WORKBENCH"
+                    setTextColor(C_INK_DIM)
+                    textSize = 12f
+                    letterSpacing = 0.12f
+                    layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
+                }
+            )
+        }
+    }
+
+    /**
+     * Chin row: battery badge (black pill) + speaker grille (dot pattern).
+     * Matches HTML .chinrow.
+     */
+    private fun chinRow(): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(C_SCREEN) // still on screen in chin
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+
+            // Battery badge
+            addView(
+                TextView(this@MainActivity).apply {
+                    text = "▪ 89%"
+                    setTextColor(Color.WHITE)
+                    textSize = 14f
+                    setTypeface(typeface, Typeface.BOLD)
+                    background = GradientDrawable().also { gd ->
+                        gd.setColor(C_BATT_BG)
+                        gd.cornerRadius = dp(11).toFloat()
+                    }
+                    setPadding(dp(12), dp(7), dp(12), dp(7))
+                },
+                LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).also {
+                    it.marginEnd = dp(14)
+                },
+            )
+
+            // Speaker grille: a View with a dot-pattern background drawn via Canvas
+            addView(
+                GrilleView(this@MainActivity).apply {
+                    dotColor = C_GRILLE
+                    background = GradientDrawable().also { gd ->
+                        gd.setColor(Color.TRANSPARENT)
+                        gd.cornerRadius = dp(8).toFloat()
+                    }
+                },
+                LinearLayout.LayoutParams(0, dp(34), 1f),
+            )
+        }
+    }
+
+    /** Pattern row: dark screen style — name + schedule, then a dome Play button. */
     private fun patternRow(name: String, pattern: HapticAudioPattern): LinearLayout {
         val schedule = AndroidHaptics.renderingSummary(pattern, renderer.scheduleHaptics(pattern, capabilities))
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(0, dp(8), 0, dp(8))
+
             addView(
                 LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.VERTICAL
@@ -209,33 +313,69 @@ class MainActivity : Activity() {
                     addView(
                         TextView(this@MainActivity).apply {
                             text = name
-                            setTextColor(Color.parseColor("#E6E8EC"))
-                            textSize = 16f
+                            setTextColor(C_INK)
+                            textSize = 15f
                         },
                     )
                     addView(
                         TextView(this@MainActivity).apply {
                             text = schedule
-                            setTextColor(Color.parseColor("#8B90A0"))
+                            setTextColor(C_INK_DIM)
                             textSize = 11f
                         },
                     )
                 },
             )
-            addView(
-                Button(this@MainActivity).apply {
-                    text = "Play"
-                    setBackgroundColor(Color.parseColor("#E74C3C")) // Red accent
-                    setTextColor(Color.parseColor("#FFFFFF"))
-                    setOnClickListener { play(pattern) }
-                },
-            )
+
+            // Dome-style Play button
+            addView(domeButton("Play") { play(pattern) })
+        }
+    }
+
+    /**
+     * Dome button: matches the HTML .key + .dome style.
+     * Light gray outer key → radial-gradient white dome → red glyph/text on top.
+     */
+    private fun domeButton(label: String, onClick: () -> Unit): Button {
+        return Button(this).apply {
+            text = label
+            setTextColor(C_ICON)
+            textSize = 13f
+            background = GradientDrawable().also { gd ->
+                gd.gradientType = GradientDrawable.LINEAR_GRADIENT
+                gd.orientation = GradientDrawable.Orientation.TOP_BOTTOM
+                gd.colors = intArrayOf(
+                    Color.parseColor("#EFEEEB"),
+                    Color.parseColor("#E4E3DF"),
+                )
+                gd.cornerRadius = dp(14).toFloat()
+                gd.setStroke(dp(1), C_HOUSE_EDGE)
+            }
+            elevation = dp(2).toFloat()
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            setOnClickListener { onClick() }
+        }
+    }
+
+    /** Self-test outlined button: shows in the dark screen area. */
+    private fun outlineButton(label: String, onClick: () -> Unit): Button {
+        return Button(this).apply {
+            text = label
+            setTextColor(C_INK)
+            textSize = 13f
+            background = GradientDrawable().also { gd ->
+                gd.setColor(Color.TRANSPARENT)
+                gd.cornerRadius = dp(10).toFloat()
+                gd.setStroke(dp(1), C_INK_DIM)
+            }
+            setPadding(dp(16), dp(10), dp(16), dp(10))
+            setOnClickListener { onClick() }
         }
     }
 
     private fun title(text: String) = TextView(this).apply {
         this.text = text
-        setTextColor(Color.parseColor("#FFFFFF"))
+        setTextColor(C_INK)
         textSize = 22f
         setTypeface(typeface, Typeface.BOLD)
         layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT)
@@ -243,16 +383,17 @@ class MainActivity : Activity() {
 
     private fun caption(text: String) = TextView(this).apply {
         this.text = text
-        setTextColor(Color.parseColor("#8B90A0"))
-        textSize = 13f
+        setTextColor(C_INK_DIM)
+        textSize = 12f
         setPadding(0, dp(2), 0, dp(2))
     }
 
-    private fun spacer(height: Int) = TextView(this).apply {
+    private fun spacer(height: Int) = View(this).apply {
         layoutParams = LinearLayout.LayoutParams(MATCH_PARENT, height)
     }
 
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun dp(value: Int): Int =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics).toInt()
 
     private companion object {
         const val SAMPLE_RATE = 48_000

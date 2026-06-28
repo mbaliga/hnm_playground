@@ -61,9 +61,9 @@ fun AssistantPanel(state: EditorState, modifier: Modifier = Modifier) {
 
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("✦ Assistant", color = WorkbenchColors.Primary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text("✦ Assistant", color = WorkbenchColors.Red, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(8.dp))
-            Text("describe what you want to feel", color = WorkbenchColors.Muted, fontSize = 11.sp)
+            Text("describe what you want to feel", color = WorkbenchColors.InkDim, fontSize = 11.sp)
         }
         Spacer(Modifier.height(6.dp))
 
@@ -78,15 +78,15 @@ fun AssistantPanel(state: EditorState, modifier: Modifier = Modifier) {
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = WorkbenchColors.Surface,
                     unfocusedContainerColor = WorkbenchColors.Surface,
-                    focusedIndicatorColor = WorkbenchColors.Primary,
+                    focusedIndicatorColor = WorkbenchColors.Red,
                     unfocusedIndicatorColor = WorkbenchColors.Grid,
-                    cursorColor = WorkbenchColors.Primary,
+                    cursorColor = WorkbenchColors.Red,
                 ),
             )
             Button(
                 onClick = { run(text) },
                 enabled = !state.isGenerating && text.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = WorkbenchColors.Primary),
+                colors = ButtonDefaults.buttonColors(containerColor = WorkbenchColors.Red),
                 modifier = Modifier.height(52.dp),
             ) {
                 if (state.isGenerating) {
@@ -98,7 +98,7 @@ fun AssistantPanel(state: EditorState, modifier: Modifier = Modifier) {
         }
 
         Spacer(Modifier.height(8.dp))
-        Text("Try:", color = WorkbenchColors.Muted, fontSize = 10.sp)
+        Text("Try:", color = WorkbenchColors.InkDim, fontSize = 10.sp)
         Spacer(Modifier.height(4.dp))
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(EXAMPLES) { ex -> ExampleChip(ex, accent = false) { run(ex) } }

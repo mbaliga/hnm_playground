@@ -58,11 +58,11 @@ fun WalkthroughCard(modifier: Modifier = Modifier) {
         ) {
             Text(
                 "How this works",
-                color = WorkbenchColors.OnSurface,
+                color = WorkbenchColors.Ink,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
             )
-            Text(if (expanded) "Hide ▲" else "Show ▼", color = WorkbenchColors.Primary, fontSize = 12.sp)
+            Text(if (expanded) "Hide ▲" else "Show ▼", color = WorkbenchColors.Red, fontSize = 12.sp)
         }
 
         if (expanded) {
@@ -70,7 +70,7 @@ fun WalkthroughCard(modifier: Modifier = Modifier) {
             Text(
                 "Design haptics + sound together by describing a feeling — not by drawing waveforms. " +
                     "A visual/material handle controls felt vibration far more reliably than a word does.",
-                color = WorkbenchColors.Muted,
+                color = WorkbenchColors.InkDim,
                 fontSize = 12.sp,
             )
             Spacer(Modifier.height(10.dp))
@@ -79,8 +79,8 @@ fun WalkthroughCard(modifier: Modifier = Modifier) {
                     StepBadge(step.n)
                     Spacer(Modifier.width(10.dp))
                     Column {
-                        Text(step.title, color = WorkbenchColors.OnSurface, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        Text(step.body, color = WorkbenchColors.Muted, fontSize = 12.sp)
+                        Text(step.title, color = WorkbenchColors.Ink, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Text(step.body, color = WorkbenchColors.InkDim, fontSize = 12.sp)
                     }
                 }
             }
@@ -94,7 +94,7 @@ private fun StepBadge(n: String) {
         Modifier
             .height(22.dp)
             .clip(RoundedCornerShape(11.dp))
-            .background(WorkbenchColors.Primary)
+            .background(WorkbenchColors.Red)
             .padding(horizontal = 8.dp),
         verticalArrangement = Arrangement.Center,
     ) {
