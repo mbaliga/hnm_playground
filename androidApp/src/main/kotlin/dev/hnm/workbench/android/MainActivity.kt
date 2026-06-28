@@ -364,7 +364,7 @@ class MainActivity : Activity() {
                 )
                 gd.cornerRadius = dp(14).toFloat()
             }
-            background = LayerDrawable(arrayOf(cell, crater)).also { ld ->
+            background = LayerDrawable(arrayOf<android.graphics.drawable.Drawable>(cell, crater)).also { ld ->
                 ld.setLayerInset(1, dp(3), dp(3), dp(3), dp(3))
             }
             setPadding(dp(16), dp(10), dp(16), dp(10))
