@@ -59,12 +59,12 @@ fun TimelineView(state: EditorState, modifier: Modifier = Modifier) {
             modifier = Modifier.padding(bottom = 4.dp),
         )
 
-        // Screen-style dark container with rounded corners, matching .screen in the HTML
+        // Inner screen container — matches .screen (26px radius, #141210)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(220.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(20.dp))
                 .background(WorkbenchColors.Screen),
         ) {
             Canvas(
@@ -92,15 +92,15 @@ fun TimelineView(state: EditorState, modifier: Modifier = Modifier) {
             ) {
                 val w = size.width
                 val h = size.height
-                val hapticH = h / 2f
-                val audioTop = h / 2f
 
-                // ---- constants from the HTML ----
+                // ---- constants from recorder2.html ----
                 val slot = 4.3f.dp.toPx()
                 val barW = 2.2f.dp.toPx()
-                val maxHalf = hapticH * 0.225f
+                val topPad = 6f.dp.toPx()           // TOP_PAD: bars begin here
+                val maxBarH = h * 0.50f             // tallest bar = 50% of canvas
+                val audioTop = h * 0.62f            // audio bars hang from lower band
 
-                // ---- haptic waveform as recorder bars ----
+                // ---- haptic waveform: top-anchored bars hanging down ----
                 if (waveform.isNotEmpty()) {
                     val cols = (w / slot).toInt().coerceAtLeast(1)
                     val per = (waveform.size / cols).coerceAtLeast(1)
@@ -112,77 +112,72 @@ fun TimelineView(state: EditorState, modifier: Modifier = Modifier) {
                             if (a > peak) peak = a
                         }
                         val x = c * slot + (slot - barW) / 2
-                        val half = maxOf(1.2f, peak * maxHalf)
-                        val midY = hapticH * 0.5f
+                        val barH = maxOf(2f, peak * maxBarH)
                         drawRect(
-                            color = WorkbenchColors.Bar,
-                            topLeft = Offset(x, midY - half),
-                            size = Size(barW, half * 2),
+                            color = WorkbenchColors.Bar.copy(alpha = 0.82f),
+                            topLeft = Offset(x, topPad),
+                            size = Size(barW, barH),
                         )
                     }
                 }
 
-                // Playhead at pattern end  (no live playback cursor yet)
-                val playX = w
-                drawDottedBaseline(playX, w, hapticH * 0.5f)
-                drawPlayhead(playX.coerceAtMost(w - 1f), hapticH * 0.5f, maxHalf)
+                // Playhead at pattern end + dotted future-baseline (no live cursor yet)
+                val playX = (w - 2f).coerceAtLeast(0f)
+                drawDottedBaseline(playX + 2f, w - 4f, topPad)
+                drawPlayhead(playX, topPad, maxBarH)
 
-                // ---- haptic event markers ----
+                // ---- haptic event markers (along the top-anchored band) ----
+                val markerMid = topPad + maxBarH * 0.5f
                 state.hapticEvents.forEachIndexed { i, event ->
                     val x = (event.time / duration * w).toFloat()
                     val selected = i == state.selectedEventIndex
-                    val color = if (selected) Color.White else WorkbenchColors.Haptic
+                    val color = if (selected) WorkbenchColors.Ink else WorkbenchColors.Haptic
                     when (event) {
                         is Transient -> {
                             val r = (4 + event.intensity * 8).toFloat()
-                            drawCircle(color, radius = r, center = Offset(x, hapticH * 0.5f))
+                            drawCircle(color, radius = r, center = Offset(x, markerMid))
                         }
                         is Primitive -> {
-                            val barH = (hapticH * 0.6f * event.scale).toFloat()
-                            drawRect(color, Offset(x - 3f, hapticH * 0.5f - barH / 2f), Size(6f, barH))
+                            val barH = (maxBarH * 0.6f * event.scale).toFloat()
+                            drawRect(color, Offset(x - 3f, markerMid - barH / 2f), Size(6f, barH))
                         }
                         is Continuous -> {
                             val wEv = (event.duration / duration * w).toFloat()
-                            val barH = (hapticH * 0.6f * event.intensity).toFloat()
+                            val barH = (maxBarH * 0.6f * event.intensity).toFloat()
                             drawRect(
                                 color.copy(alpha = 0.6f),
-                                Offset(x, hapticH * 0.5f - barH / 2f),
+                                Offset(x, markerMid - barH / 2f),
                                 Size(wEv, barH),
                             )
                         }
                     }
                 }
 
-                // ---- audio events in lower half ----
+                // ---- audio events: hang from the lower band ----
                 pattern.tracks.filterIsInstance<AudioTrack>().forEach { track ->
                     track.events.forEachIndexed { audioIdx, ev ->
                         val x = (ev.time / duration * w).toFloat()
                         val dur = when (ev) { is OscEvent -> ev.duration; is SampleEvent -> 0.05 }
                         val wEv = (dur / duration * w).toFloat().coerceAtLeast(3f)
                         val gain = if (ev is OscEvent) ev.gain else 1.0
-                        val barH = (hapticH * 0.7f * gain).toFloat()
+                        val barH = ((h - audioTop) * 0.85f * gain).toFloat()
                         val audioSelected = audioIdx == state.selectedAudioEventIndex
-                        // Slightly blue-tinted bar, dimmer than the haptic bars
                         drawRect(
-                            if (audioSelected) Color.White.copy(alpha = 0.85f) else Color(0xFF8BA8C8).copy(alpha = 0.55f),
-                            Offset(x, audioTop + (hapticH - barH) / 2f),
+                            if (audioSelected) WorkbenchColors.Ink.copy(alpha = 0.85f)
+                            else Color(0xFF6E8AA8).copy(alpha = 0.5f),
+                            Offset(x, audioTop),
                             Size(wEv, barH),
                         )
                     }
                 }
 
-                // ---- grid ----
-                drawLine(
-                    WorkbenchColors.Grid.copy(alpha = 0.6f),
-                    Offset(0f, h / 2f), Offset(w, h / 2f),
-                    strokeWidth = 1f,
-                )
+                // ---- grid: faint time ticks ----
                 val step = niceStep(duration)
                 var t = 0.0
                 while (t <= duration) {
                     val x = (t / duration * w).toFloat()
                     drawLine(
-                        WorkbenchColors.Grid.copy(alpha = 0.3f),
+                        WorkbenchColors.Grid.copy(alpha = 0.4f),
                         Offset(x, 0f), Offset(x, h),
                         strokeWidth = 1f,
                     )

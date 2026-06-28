@@ -2,14 +2,11 @@ package dev.hnm.workbench.android
 
 import android.app.Activity
 import android.graphics.Color
-import android.graphics.LinearGradient
-import android.graphics.Shader
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.ShapeDrawable
 import android.graphics.drawable.shapes.OvalShape
-import android.graphics.drawable.shapes.RoundRectShape
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -43,25 +40,32 @@ import dev.hnm.workbench.core.ir.HapticTrack
 import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.core.playback.HapticCapabilities
 
-// ---- HTML color constants (ported from --css-vars) ----
-private val C_SCREEN   = Color.parseColor("#0B0B0B")
-private val C_INK      = Color.parseColor("#EFEEEC")
-private val C_INK_DIM  = Color.parseColor("#C8C7C4")
-private val C_BAR      = Color.parseColor("#E9E9E6")
-private val C_RED      = Color.parseColor("#E22C24")
-private val C_HOUSING  = Color.parseColor("#E9E8E5")
-private val C_HOUSE_EDGE = Color.parseColor("#D6D5D1")
-private val C_FRAME    = Color.parseColor("#ECEBE8")
-private val C_GRILLE   = Color.parseColor("#C3C2BF")
-private val C_ICON     = Color.parseColor("#A9A8A5")
-private val C_DOME_HI  = Color.parseColor("#FFFFFF")
-private val C_DOME_LO  = Color.parseColor("#DEDCD8")
-private val C_BATT_BG  = Color.parseColor("#0E0E0E")
+// ---- recorder2.html color constants (the dark revision) ----
+private val C_SCREEN    = Color.parseColor("#141210")  // screen: dark grey-brown
+private val C_INK       = Color.parseColor("#DDDBD6")
+private val C_INK_DIM   = Color.parseColor("#5C5A56")
+private val C_BAR       = Color.parseColor("#D2CFC8")
+private val C_RED       = Color.parseColor("#E22C24")
+private val C_SHELL_TOP = Color.parseColor("#1C1A18")
+private val C_SHELL_MID = Color.parseColor("#111009")
+private val C_SHELL_LO  = Color.parseColor("#0A0908")
+private val C_SHELL_BD  = Color.parseColor("#282420")
+private val C_GRILLE_BG = Color.parseColor("#0A0908")
+private val C_GRILLE_BD = Color.parseColor("#1C1A16")
+private val C_BATT_BG   = Color.parseColor("#0A0908")
+private val C_BATT_TXT  = Color.parseColor("#999999")
+private val C_BATT_BD   = Color.parseColor("#252220")
+private val C_SLAB      = Color.parseColor("#050402")
+private val C_KEYCELL   = Color.parseColor("#161412")
+private val C_ICON      = Color.parseColor("#524F4A")
+private val C_GLYPH_STOP = Color.parseColor("#58554F")
 
 /**
- * On-device player with the full recorder aesthetic:
- *   • Dark screen area (#0b0b0b) for pattern list / waveform
- *   • Light housing area with dome-style Play buttons
+ * On-device player with the full recorder2 aesthetic — all dark:
+ *   • Near-black device shell gradient
+ *   • Screen area (#141210) for status bar + pattern list
+ *   • Dark battery pill + speaker grille
+ *   • Keypad slab of recessed crater keys for transport
  *   • Battery badge + speaker grille in the chin
  *   • Red (#e22c24) active accent
  */
@@ -94,17 +98,25 @@ class MainActivity : Activity() {
             MaterialPreset.entries.forEach { add("Material · ${it.displayName}" to ModalSynth.toPattern(it.material)) }
         }
 
-        // ---- outer device shell (warm gray frame) ----
+        // ---- outer device shell (near-black 160° gradient) ----
         val shell = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(C_FRAME)
-            // Rounded corners via outline (API 21+)
+            background = GradientDrawable().also { gd ->
+                gd.gradientType = GradientDrawable.LINEAR_GRADIENT
+                gd.orientation = GradientDrawable.Orientation.TL_BR
+                gd.colors = intArrayOf(C_SHELL_TOP, C_SHELL_MID, C_SHELL_LO)
+                gd.cornerRadius = dp(28).toFloat()
+            }
+            setPadding(dp(12), dp(12), dp(12), dp(16))
         }
 
-        // ---- screen area (dark) ----
+        // ---- screen area (dark grey-brown #141210, rounded) ----
         val screen = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(C_SCREEN)
+            background = GradientDrawable().also { gd ->
+                gd.setColor(C_SCREEN)
+                gd.cornerRadius = dp(20).toFloat()
+            }
             setPadding(dp(18), dp(18), dp(18), dp(18))
         }
 
@@ -128,19 +140,15 @@ class MainActivity : Activity() {
         shell.addView(screen, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
         // ---- chin row (battery + grille) ----
-        shell.addView(chinRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
-
-        // ---- housing / controls area (light) ----
-        val housing = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(C_HOUSING)
-            setPadding(dp(18), dp(16), dp(18), dp(22))
-        }
-        shell.addView(housing, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        shell.addView(chinRow(), LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).also {
+            it.topMargin = dp(14)
+        })
 
         val scroll = ScrollView(this).apply {
             addView(shell)
-            setBackgroundColor(C_FRAME)
+            setBackgroundColor(Color.BLACK) // recorder2 body background:#000
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            clipToPadding = false
         }
         setContentView(scroll)
     }
@@ -215,7 +223,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.11 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.12 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"
@@ -263,19 +271,18 @@ class MainActivity : Activity() {
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setBackgroundColor(C_SCREEN) // still on screen in chin
-            setPadding(dp(18), dp(14), dp(18), dp(14))
+            setPadding(dp(6), dp(2), dp(6), dp(2))
 
-            // Battery badge
+            // Battery badge — dark pill (#0a0908), #999 text, #252220 border
             addView(
                 TextView(this@MainActivity).apply {
-                    text = "▪ 89%"
-                    setTextColor(Color.WHITE)
+                    text = "▮ 89%"
+                    setTextColor(C_BATT_TXT)
                     textSize = 14f
-                    setTypeface(typeface, Typeface.BOLD)
                     background = GradientDrawable().also { gd ->
                         gd.setColor(C_BATT_BG)
                         gd.cornerRadius = dp(11).toFloat()
+                        gd.setStroke(dp(1), C_BATT_BD)
                     }
                     setPadding(dp(12), dp(7), dp(12), dp(7))
                 },
@@ -284,13 +291,14 @@ class MainActivity : Activity() {
                 },
             )
 
-            // Speaker grille: a View with a dot-pattern background drawn via Canvas
+            // Speaker grille — dark (#0a0908) with white .22 dots, #1c1a16 border
             addView(
                 GrilleView(this@MainActivity).apply {
-                    dotColor = C_GRILLE
+                    dotColor = Color.argb(56, 255, 255, 255) // rgba(255,255,255,.22)
                     background = GradientDrawable().also { gd ->
-                        gd.setColor(Color.TRANSPARENT)
+                        gd.setColor(C_GRILLE_BG)
                         gd.cornerRadius = dp(8).toFloat()
+                        gd.setStroke(dp(1), C_GRILLE_BD)
                     }
                 },
                 LinearLayout.LayoutParams(0, dp(34), 1f),
@@ -333,25 +341,32 @@ class MainActivity : Activity() {
     }
 
     /**
-     * Dome button: matches the HTML .key + .dome style.
-     * Light gray outer key → radial-gradient white dome → red glyph/text on top.
+     * Crater key (recorder2 .key + .dome): a dark cell (#161412) with a recessed crater —
+     * vertical gradient dark-top → lighter-bottom (#020201 → #2d2a1f), red label.
      */
     private fun domeButton(label: String, onClick: () -> Unit): Button {
         return Button(this).apply {
             text = label
-            setTextColor(C_ICON)
+            setTextColor(C_RED)
             textSize = 13f
-            background = GradientDrawable().also { gd ->
+            // Key cell with an inset crater feel: layered drawable (cell base + crater gradient)
+            val cell = GradientDrawable().also { gd ->
+                gd.setColor(C_KEYCELL)
+                gd.cornerRadius = dp(14).toFloat()
+            }
+            val crater = GradientDrawable().also { gd ->
                 gd.gradientType = GradientDrawable.LINEAR_GRADIENT
                 gd.orientation = GradientDrawable.Orientation.TOP_BOTTOM
                 gd.colors = intArrayOf(
-                    Color.parseColor("#EFEEEB"),
-                    Color.parseColor("#E4E3DF"),
+                    Color.parseColor("#020201"),
+                    Color.parseColor("#141210"),
+                    Color.parseColor("#2D2A1F"),
                 )
                 gd.cornerRadius = dp(14).toFloat()
-                gd.setStroke(dp(1), C_HOUSE_EDGE)
             }
-            elevation = dp(2).toFloat()
+            background = LayerDrawable(arrayOf(cell, crater)).also { ld ->
+                ld.setLayerInset(1, dp(3), dp(3), dp(3), dp(3))
+            }
             setPadding(dp(16), dp(10), dp(16), dp(10))
             setOnClickListener { onClick() }
         }
