@@ -17,6 +17,8 @@ fun main() = application {
         title = "Haptics + Audio Workbench",
     ) {
         val state = remember { EditorState() }
-        WorkbenchApp(state)
+        // A different procedural splash motif each launch (seed varies with wall-clock).
+        val seed = remember { (System.currentTimeMillis() / 500L).toInt() }
+        WorkbenchWithSplash(state, seed = seed)
     }
 }

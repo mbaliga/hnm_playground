@@ -22,7 +22,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +54,7 @@ import dev.hnm.workbench.ui.components.RecordingDot
 import dev.hnm.workbench.ui.components.RhythmCapturePanel
 import dev.hnm.workbench.ui.components.ScanlineOverlay
 import dev.hnm.workbench.ui.components.SpeakerGrille
+import dev.hnm.workbench.ui.components.SplashScreen
 import dev.hnm.workbench.ui.components.TexturePalette
 import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.components.WalkthroughCard
@@ -82,6 +86,30 @@ fun WorkbenchApp(
                 }
             }
         }
+    }
+}
+
+/**
+ * The app with a procedural splash overlaid on first launch. The splash's visual, sound and haptics all
+ * come from one seed-selected [dev.hnm.workbench.core.design.SplashScene]; when it finishes (or is
+ * tapped) the workbench is revealed. [WorkbenchApp] itself stays splash-free so headless render tests of
+ * the editor are unaffected.
+ */
+@Composable
+fun WorkbenchWithSplash(
+    state: EditorState = remember { EditorState() },
+    seed: Int = 0,
+    onOpenGallery: (() -> Unit)? = null,
+) {
+    var showSplash by remember { mutableStateOf(true) }
+    val scene = remember(seed) { dev.hnm.workbench.core.design.SplashMotifs.generate(seed) }
+    WorkbenchApp(state, onOpenGallery)
+    if (showSplash) {
+        SplashScreen(
+            scene = scene,
+            onStart = { if (state.canPlay) state.player.play(scene.pattern) },
+            onFinished = { showSplash = false },
+        )
     }
 }
 

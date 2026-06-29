@@ -13,6 +13,7 @@ import android.graphics.drawable.shapes.OvalShape
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.os.Vibrator
 import android.util.TypedValue
 import android.view.Gravity
@@ -30,6 +31,7 @@ import dev.hnm.workbench.core.design.MotionPrimitive
 import dev.hnm.workbench.core.design.MotionPrimitives
 import dev.hnm.workbench.core.design.ParameterNavigator
 import dev.hnm.workbench.core.design.RhythmCapture
+import dev.hnm.workbench.core.design.SplashMotifs
 import dev.hnm.workbench.core.design.Tap
 import dev.hnm.workbench.core.design.TextureField
 import dev.hnm.workbench.core.design.TextureFieldType
@@ -174,7 +176,19 @@ class MainActivity : Activity() {
             setPadding(dp(8), dp(8), dp(8), dp(8))
             clipToPadding = false
         }
-        setContentView(scroll)
+
+        // Procedural splash first: a seed-selected motif whose visual, sound and haptics all come from
+        // one pattern, so the intro you feel matches the intro you see. Tap to skip; reveals the player.
+        if (savedInstanceState == null) {
+            val scene = SplashMotifs.generate((SystemClock.elapsedRealtime() / 500L).toInt())
+            val splash = SplashView(this, scene)
+            splash.onStart = { play(scene.pattern) }
+            splash.onDone = { setContentView(scroll) }
+            setContentView(splash)
+            splash.post { splash.begin() }
+        } else {
+            setContentView(scroll)
+        }
     }
 
     override fun onDestroy() {
@@ -247,7 +261,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.13 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.14 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"

@@ -140,6 +140,25 @@ class PreviewRenderTest {
     }
 
     @Test
+    fun rendersSplashFrame() {
+        // Draw a deterministic mid-animation frame of each procedural splash motif.
+        dev.hnm.workbench.core.design.SplashMotifs.all().forEach { scene ->
+            val s = ImageComposeScene(width = 600, height = 900, density = Density(1f)) {
+                dev.hnm.workbench.ui.components.SplashScreen(scene = scene, fixedTimeSec = 0.7)
+            }
+            try {
+                val png = s.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                    ?: error("PNG encode returned null")
+                File("build/preview").apply { mkdirs() }
+                File("build/preview/splash-${scene.visual.name.lowercase()}.png").writeBytes(png)
+                assertTrue(png.size > 5_000, "${scene.visual} splash didn't compose (${png.size} bytes)")
+            } finally {
+                s.close()
+            }
+        }
+    }
+
+    @Test
     fun rendersEditorWithLoadedMaterial() {
         // Exercises the Stage-4 path: a struck material (sound + haptics from one modal model) loaded.
         val state = EditorState().apply {
