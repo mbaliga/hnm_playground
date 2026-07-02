@@ -1,5 +1,8 @@
 # Haptics + Audio Workbench
 
+> **Constellation** · `state: active` · public · [registry: `Personal-Tracker/CONSTELLATION.md`](https://github.com/mbaliga/Personal-Tracker/blob/main/CONSTELLATION.md)
+> Cross-platform haptics + audio authoring workbench (Kotlin Multiplatform), one backend-agnostic IR.
+
 A cross-platform tool for **designing, feeling, and exporting haptic + sound effects**.
 Android-first, with JVM desktop next. Two equally-weighted intents: a *playground* to explore and
 feel effects, and a *dev tool* that exports effects into real apps.
@@ -85,3 +88,8 @@ the M0–M7 build order with current status.
 For where the authoring UI goes next — visual/procedural haptic design (motion primitives → texture
 fields → physics/material), the perceptual grounding, and AI's role as a parameter-space navigator —
 see [docs/AUTHORING-INTERFACES.md](docs/AUTHORING-INTERFACES.md).
+
+## Do not touch
+
+- The **Android build is gated behind `ENABLE_ANDROID=1`** (SDK not always in the image) — don't assume the APK builds in CI; the default `./gradlew build` stays JVM-only.
+- The single backend-agnostic IR (`HapticAudioPattern`) is the spine — keep the render/export seam swappable per backend.
