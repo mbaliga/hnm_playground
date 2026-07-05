@@ -29,6 +29,10 @@ jobs:
       ENABLE_ANDROID: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          # hyle-design-system submodule — :androidApp's crash-recovery dependency resolves
+          # from its includeBuild (settings.gradle.kts); an empty submodule dir breaks the build.
+          submodules: recursive
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

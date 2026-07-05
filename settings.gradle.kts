@@ -31,6 +31,14 @@ include(":desktopApp")
 // JVM-only KMP module — keeping `./gradlew build` green here while CI builds the real APK.
 if (androidSdkAvailable()) {
     include(":androidApp")
+
+    // Narrow, deliberate addition: brings in mbaliga/Hyle-Design-System ONLY for its
+    // :crash-recovery module (dev.aarso:crash-recovery — no dependency on :hyle), consumed
+    // by :androidApp. Gated the same as :androidApp above — its modules are Android-library
+    // projects too, so including it unconditionally would break the JVM-only-SDK-less build
+    // this gate exists to protect. Update the pin with:
+    //   git -C hyle-design-system fetch && git -C hyle-design-system checkout <sha> && git add hyle-design-system
+    includeBuild("hyle-design-system")
 }
 
 // NOTE: `:backend-desktop` (controller HID backends) is described in docs/MODULES.md. It requires
