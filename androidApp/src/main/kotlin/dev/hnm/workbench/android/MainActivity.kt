@@ -130,7 +130,22 @@ class MainActivity : Activity() {
         screen.addView(statusBar())
         screen.addView(spacer(dp(12)))
         screen.addView(title("Haptics + Audio Player"))
-        screen.addView(caption(diagnostics()))
+        screen.addView(
+            caption(diagnostics()).apply {
+                // Debug-only: long-press the build/diagnostics caption to preview the
+                // crash-recovery screen without actually crashing (dev.aarso:crash-recovery —
+                // see that repo's README). No dedicated About screen exists here, so this is
+                // the nearest existing version-adjacent text. Never reachable from a release build.
+                if ((context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+                    setOnLongClickListener {
+                        context.startActivity(
+                            dev.aarso.crashrecovery.CrashRecovery.previewIntent(context, appLabel = "Haptics Workbench"),
+                        )
+                        true
+                    }
+                }
+            },
+        )
         screen.addView(spacer(dp(10)))
 
         // Self-test button in screen area (outlined style)
