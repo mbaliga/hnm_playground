@@ -8,6 +8,7 @@ import android.os.Vibrator
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import dev.aarso.crashrecovery.CrashRecovery
 import dev.hnm.workbench.core.playback.HapticCapabilities
 import dev.hnm.workbench.ui.WorkbenchApp
 import dev.hnm.workbench.ui.model.EditorState
@@ -27,6 +28,10 @@ class WorkbenchActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // If the previous run crashed, show the shared recovery screen instead of the workbench
+        // — a device-only launch crash (which CI never sees) can't brick the install.
+        if (CrashRecovery.maybeShowRecovery(this, appLabel = "Haptics Workbench")) return
 
         vibrator = AndroidHaptics.vibrator(this)
         capabilities = AndroidHaptics.probe(vibrator)
