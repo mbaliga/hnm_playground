@@ -30,6 +30,10 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.hnm.workbench.ui.theme.Finish
+import dev.hnm.workbench.ui.theme.HyleRoles
+import dev.hnm.workbench.ui.theme.Pulse
+import dev.hnm.workbench.ui.theme.RadiantHues
 import dev.hnm.workbench.ui.theme.WorkbenchColors
 
 /**
@@ -268,19 +272,18 @@ fun ScanlineOverlay(modifier: Modifier = Modifier) {
 /** Red recording dot + glow (recorder2.html .recdot). */
 @Composable
 fun RecordingDot(active: Boolean, modifier: Modifier = Modifier) {
+    // "Live/playing" reuses the Provenance glow language (radium, breathing per Pulse.WATCHED) rather
+    // than the violet primary-action color — see HyleRoles.PlaybackGlow.
+    val glowModifier = if (active) {
+        Modifier.provenanceGlow(Finish.Radiant(RadiantHues.RADIUM, Pulse.WATCHED), CircleShape)
+    } else {
+        Modifier
+    }
     Box(
         modifier = modifier
             .clip(CircleShape)
-            .background(if (active) WorkbenchColors.Red else Color(0xFF2E2C28))
-            .drawBehind {
-                if (active) {
-                    drawCircle(
-                        color = WorkbenchColors.Red.copy(alpha = 0.7f),
-                        radius = size.minDimension,
-                        style = Stroke(width = size.minDimension * 0.4f),
-                    )
-                }
-            },
+            .background(if (active) HyleRoles.PlaybackGlow else Color(0xFF2E2C28))
+            .then(glowModifier),
     )
 }
 
@@ -301,18 +304,18 @@ fun DrawScope.drawDottedBaseline(x0: Float, x1: Float, topPad: Float) {
     }
 }
 
-/** Red playhead: dot near the top + line hanging down (recorder2 drawPlayhead). */
+/** Playhead: dot near the top + line hanging down. Radium — the "live/playing" glow, not the action accent. */
 fun DrawScope.drawPlayhead(x: Float, topPad: Float, maxBarH: Float) {
     val dotY = topPad - 1f
     val botY = topPad + maxBarH * 1.08f
     drawLine(
-        color = WorkbenchColors.Red,
+        color = HyleRoles.PlaybackGlow,
         start = Offset(x + 0.5f, dotY + 9f),
         end = Offset(x + 0.5f, botY),
         strokeWidth = 1.5f,
     )
     drawCircle(
-        color = WorkbenchColors.Red,
+        color = HyleRoles.PlaybackGlow,
         radius = 4.2f,
         center = Offset(x + 0.5f, dotY + 5f),
     )

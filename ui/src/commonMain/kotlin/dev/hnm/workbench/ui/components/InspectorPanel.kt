@@ -80,15 +80,18 @@ private fun HapticEventSection(state: EditorState) {
 
     // Time slider: 0..max(2s, event time + 0.5s).
     val maxTime = (state.durationSeconds + 0.5).coerceAtLeast(2.0)
-    LabeledSlider("Time", event.time / maxTime, "${ms(event.time)} ms") {
+    LabeledSlider("Time", event.time / maxTime, "${ms(event.time)} ms", onChangeFinished = state::commitEdit) {
         state.setSelectedTime(it * maxTime)
     }
 
-    LabeledSlider(if (event is Primitive) "Scale" else "Intensity", intensity, "${(intensity * 100).toInt()}%") {
+    LabeledSlider(
+        if (event is Primitive) "Scale" else "Intensity", intensity, "${(intensity * 100).toInt()}%",
+        onChangeFinished = state::commitEdit,
+    ) {
         state.setSelectedIntensity(it)
     }
     if (sharpness != null) {
-        LabeledSlider("Sharpness", sharpness, "${(sharpness * 100).toInt()}%") {
+        LabeledSlider("Sharpness", sharpness, "${(sharpness * 100).toInt()}%", onChangeFinished = state::commitEdit) {
             state.setSelectedSharpness(it)
         }
     } else {
@@ -98,21 +101,21 @@ private fun HapticEventSection(state: EditorState) {
     // Continuous-only: duration + ADSR.
     if (event is Continuous) {
         val maxDur = (state.durationSeconds + 0.2).coerceAtLeast(0.5)
-        LabeledSlider("Duration", event.duration / maxDur, "${ms(event.duration)} ms") {
+        LabeledSlider("Duration", event.duration / maxDur, "${ms(event.duration)} ms", onChangeFinished = state::commitEdit) {
             state.setSelectedDuration(it * maxDur)
         }
         Text("ADSR", color = WorkbenchColors.Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
         val env = event.envelope
-        LabeledSlider("Attack", env.attack / 0.5, "${ms(env.attack)} ms") {
+        LabeledSlider("Attack", env.attack / 0.5, "${ms(env.attack)} ms", onChangeFinished = state::commitEdit) {
             state.setSelectedEnvelope(attack = it * 0.5)
         }
-        LabeledSlider("Decay", env.decay / 0.5, "${ms(env.decay)} ms") {
+        LabeledSlider("Decay", env.decay / 0.5, "${ms(env.decay)} ms", onChangeFinished = state::commitEdit) {
             state.setSelectedEnvelope(decay = it * 0.5)
         }
-        LabeledSlider("Sustain", env.sustain, "${(env.sustain * 100).toInt()}%") {
+        LabeledSlider("Sustain", env.sustain, "${(env.sustain * 100).toInt()}%", onChangeFinished = state::commitEdit) {
             state.setSelectedEnvelope(sustain = it)
         }
-        LabeledSlider("Release", env.release / 0.5, "${ms(env.release)} ms") {
+        LabeledSlider("Release", env.release / 0.5, "${ms(env.release)} ms", onChangeFinished = state::commitEdit) {
             state.setSelectedEnvelope(release = it * 0.5)
         }
     }
@@ -143,14 +146,14 @@ private fun OscEventEditor(state: EditorState, ev: OscEvent) {
     Text("$waveLabel tone @ ${ms(ev.time)}", color = WorkbenchColors.OnSurface, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp))
 
     val maxFreq = 2000.0
-    LabeledSlider("Frequency", ev.frequencyHz / maxFreq, "${ev.frequencyHz.toInt()} Hz") {
+    LabeledSlider("Frequency", ev.frequencyHz / maxFreq, "${ev.frequencyHz.toInt()} Hz", onChangeFinished = state::commitEdit) {
         state.setSelectedAudioFrequency(it * maxFreq)
     }
-    LabeledSlider("Gain", ev.gain, "${(ev.gain * 100).toInt()}%") {
+    LabeledSlider("Gain", ev.gain, "${(ev.gain * 100).toInt()}%", onChangeFinished = state::commitEdit) {
         state.setSelectedAudioGain(it)
     }
     val maxDur = 2.0
-    LabeledSlider("Duration", ev.duration / maxDur, "${ms(ev.duration)} ms") {
+    LabeledSlider("Duration", ev.duration / maxDur, "${ms(ev.duration)} ms", onChangeFinished = state::commitEdit) {
         state.setSelectedAudioDuration(it * maxDur)
     }
 
@@ -177,7 +180,13 @@ private fun OscEventEditor(state: EditorState, ev: OscEvent) {
 }
 
 @Composable
-internal fun LabeledSlider(label: String, value: Double, valueLabel: String, onChange: (Double) -> Unit) {
+internal fun LabeledSlider(
+    label: String,
+    value: Double,
+    valueLabel: String,
+    onChangeFinished: (() -> Unit)? = null,
+    onChange: (Double) -> Unit,
+) {
     Column(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(label, color = WorkbenchColors.OnSurface, fontSize = 12.sp)
@@ -186,6 +195,7 @@ internal fun LabeledSlider(label: String, value: Double, valueLabel: String, onC
         Slider(
             value = value.toFloat().coerceIn(0f, 1f),
             onValueChange = { onChange(it.toDouble()) },
+            onValueChangeFinished = onChangeFinished,
             valueRange = 0f..1f,
         )
     }

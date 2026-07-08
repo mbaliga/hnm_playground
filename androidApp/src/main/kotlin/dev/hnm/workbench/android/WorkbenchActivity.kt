@@ -1,6 +1,5 @@
 package dev.hnm.workbench.android
 
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -8,15 +7,19 @@ import android.os.Vibrator
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import dev.hnm.workbench.core.device.DeviceDatabase
 import dev.hnm.workbench.core.playback.HapticCapabilities
-import dev.hnm.workbench.ui.WorkbenchApp
+import dev.hnm.workbench.ui.WorkbenchWithSplash
 import dev.hnm.workbench.ui.model.EditorState
 
 /**
- * The main experience: hosts the shared Compose [WorkbenchApp] and wires its Play button to the real
- * actuator + speaker via [AndroidPatternPlayer]. The editor's target profile is initialized from what
- * this device actually reports, so the on-screen schedule matches what gets played. A "Gallery" button
- * jumps to the flat feel-test list ([MainActivity]).
+ * The single-activity app (UX brief §3.1 D1): hosts the shared Compose app shell (Feel/Make/Device tabs
+ * + the Editor route), wiring Play, the interface-feel chrome, self-test, and the device-report capture
+ * to the real actuator + speaker via [AndroidPatternPlayer]/[AndroidHaptics]. The editor's target profile
+ * is initialized from what this device actually reports, so the on-screen schedule matches what gets
+ * played. The legacy native-Views gallery (`MainActivity`) that used to be reachable from here is gone
+ * (Phase 7) — the Feel tab has fully covered its job (play every built-in, self-test, capture a device
+ * report) since Phase 2.
  */
 class WorkbenchActivity : ComponentActivity() {
 
@@ -42,10 +45,25 @@ class WorkbenchActivity : ComponentActivity() {
             )
         }
 
+        // A different procedural splash motif each launch; its visual, sound and haptics come from one
+        // pattern and it plays on the real actuator wired above, then reveals the workbench. The
+        // capability probe above already ran synchronously before setContent, so it's ready the instant
+        // any screen needs it — "runs in parallel behind the splash" without any extra plumbing.
+        val splashSeed = (android.os.SystemClock.elapsedRealtime() / 500L).toInt()
+        val splashPrefs = AndroidSplashPreferences(this).also { it.lastSeed = splashSeed }
+        val onboardingPrefs = AndroidOnboardingPreferences(this)
+
         setContent {
-            WorkbenchApp(
+            WorkbenchWithSplash(
                 state = state,
-                onOpenGallery = { startActivity(Intent(this, MainActivity::class.java)) },
+                seed = splashSeed,
+                onSelfTest = { AndroidHaptics.selfTest(vibrator, handler) { toast(it) } },
+                onCaptureDeviceReport = {
+                    DeviceDatabase(listOf(AndroidHaptics.probeProfile(vibrator))).toJson()
+                },
+                preferences = splashPrefs,
+                onboardingPreferences = onboardingPrefs,
+                reducedMotion = isSystemReducedMotion(this),
             )
         }
     }

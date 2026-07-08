@@ -2,6 +2,7 @@ package dev.hnm.workbench.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,15 +20,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import dev.hnm.workbench.ui.onboarding.OnboardingPreferences
+import dev.hnm.workbench.ui.onboarding.OnboardingScreen
+import dev.hnm.workbench.ui.splash.SplashPreferences
+import dev.hnm.workbench.ui.splash.shouldShowSplash
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -58,7 +68,11 @@ import dev.hnm.workbench.ui.components.SplashScreen
 import dev.hnm.workbench.ui.components.TexturePalette
 import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.components.WalkthroughCard
+import dev.hnm.workbench.core.ir.PatternSerialization
 import dev.hnm.workbench.ui.model.EditorState
+import dev.hnm.workbench.ui.model.WorkspaceMode
+import dev.hnm.workbench.ui.theme.HyleRoles
+import dev.hnm.workbench.ui.theme.LocalReducedMotion
 import dev.hnm.workbench.ui.theme.WorkbenchColors
 import dev.hnm.workbench.ui.theme.WorkbenchTheme
 
@@ -73,7 +87,7 @@ import dev.hnm.workbench.ui.theme.WorkbenchTheme
 @Composable
 fun WorkbenchApp(
     state: EditorState = remember { EditorState() },
-    onOpenGallery: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
 ) {
     WorkbenchTheme {
         // Pitch-black page (recorder2 body background:#000)
@@ -81,8 +95,8 @@ fun WorkbenchApp(
             BoxWithConstraints(Modifier.fillMaxSize().padding(16.dp)) {
                 val narrow = maxWidth < 720.dp
                 DeviceShell {
-                    if (narrow) NarrowLayout(state, onOpenGallery)
-                    else WideLayout(state, onOpenGallery)
+                    if (narrow) NarrowLayout(state, onBack)
+                    else WideLayout(state, onBack)
                 }
             }
         }
@@ -90,45 +104,75 @@ fun WorkbenchApp(
 }
 
 /**
- * The app with a procedural splash overlaid on first launch. The splash's visual, sound and haptics all
- * come from one seed-selected [dev.hnm.workbench.core.design.SplashScene]; when it finishes (or is
- * tapped) the workbench is revealed. [WorkbenchApp] itself stays splash-free so headless render tests of
- * the editor are unaffected.
+ * The app with a procedural splash overlaid on first launch, followed by the six-beat onboarding
+ * walkthrough the first time it hasn't been completed. The splash's visual, sound and haptics all come
+ * from one seed-selected [dev.hnm.workbench.core.design.SplashScene]; when it finishes (or is tapped)
+ * onboarding shows (if not already done), then the workbench is revealed. [WorkbenchApp] itself stays
+ * splash/onboarding-free so headless render tests of the editor are unaffected.
  */
 @Composable
 fun WorkbenchWithSplash(
     state: EditorState = remember { EditorState() },
     seed: Int = 0,
-    onOpenGallery: (() -> Unit)? = null,
+    onSelfTest: (() -> Unit)? = null,
+    onCaptureDeviceReport: (() -> String)? = null,
+    preferences: SplashPreferences = remember { SplashPreferences.inMemory() },
+    onboardingPreferences: OnboardingPreferences = remember { OnboardingPreferences.inMemory() },
+    reducedMotion: Boolean = false,
 ) {
-    var showSplash by remember { mutableStateOf(true) }
+    var showSplash by remember { mutableStateOf(preferences.shouldShowSplash()) }
+    // If the splash won't show this launch, onboarding's gate needs to be decided up front instead of
+    // waiting for a splash onFinished callback that will never fire.
+    var showOnboarding by remember { mutableStateOf(!preferences.shouldShowSplash() && !onboardingPreferences.completed) }
+    LaunchedEffect(Unit) { preferences.launchCount += 1 }
     val scene = remember(seed) { dev.hnm.workbench.core.design.SplashMotifs.generate(seed) }
-    WorkbenchApp(state, onOpenGallery)
-    if (showSplash) {
-        SplashScreen(
-            scene = scene,
-            onStart = { if (state.canPlay) state.player.play(scene.pattern) },
-            onFinished = { showSplash = false },
+    CompositionLocalProvider(LocalReducedMotion provides reducedMotion) {
+        AppShell(
+            state = state,
+            onSelfTest = onSelfTest,
+            onCaptureDeviceReport = onCaptureDeviceReport,
+            onReplayOnboarding = { showOnboarding = true },
+            onReplaySplash = { showSplash = true },
+            reducedMotion = reducedMotion,
         )
+        if (showSplash) {
+            SplashScreen(
+                scene = scene,
+                onStart = { if (state.canPlay) state.player.play(scene.pattern) },
+                onFinished = {
+                    showSplash = false
+                    showOnboarding = !onboardingPreferences.completed
+                },
+                reducedMotion = reducedMotion,
+            )
+        } else if (showOnboarding) {
+            OnboardingScreen(
+                onComplete = { mode ->
+                    state.workspaceMode = mode
+                    onboardingPreferences.completed = true
+                    showOnboarding = false
+                },
+            )
+        }
     }
 }
 
 /** Phone: one scrolling column inside the screen, transport slab pinned in the flow. */
 @Composable
-private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
+private fun NarrowLayout(state: EditorState, onBack: (() -> Unit)?) {
     val scroll = rememberScrollState()
     ScreenPanel(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            StatusBar(state)
+            EditorTopBar(state, onBack)
             WalkthroughCard()
             AssistantPanel(state)
             HorizontalDivider(color = WorkbenchColors.Grid)
             TimelineView(state)
             ChinRow()
-            KeypadSlab(state, onOpenGallery)
+            KeypadSlab(state)
             InspectorPanel(state)
             HorizontalDivider(color = WorkbenchColors.Grid)
             CapabilityPanel(state)
@@ -150,7 +194,7 @@ private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
 
 /** Desktop: two columns inside one dark screen. */
 @Composable
-private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
+private fun WideLayout(state: EditorState, onBack: (() -> Unit)?) {
     ScreenPanel(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             val leftScroll = rememberScrollState()
@@ -158,7 +202,7 @@ private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
                 Modifier.weight(1.4f).verticalScroll(leftScroll),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                StatusBar(state)
+                EditorTopBar(state, onBack)
                 WalkthroughCard()
                 AssistantPanel(state)
                 HorizontalDivider(color = WorkbenchColors.Grid)
@@ -182,7 +226,7 @@ private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 ChinRow()
-                KeypadSlab(state, onOpenGallery)
+                KeypadSlab(state)
                 HorizontalDivider(color = WorkbenchColors.Grid)
                 CapabilityPanel(state)
                 InspectorPanel(state)
@@ -233,28 +277,120 @@ private fun ScreenPanel(modifier: Modifier = Modifier, content: @Composable () -
     }
 }
 
-/** Status bar (recorder2 .statusbar): red dot + pattern name + counts, all in ink-dim. */
+/**
+ * Editor top bar (recorder2 .statusbar, extended for Phase 4): back arrow (when hosted inside
+ * [dev.hnm.workbench.ui.AppShell]'s Editor route) or the recording dot otherwise, the pattern name
+ * (tap to rename), event counts, and undo/redo.
+ */
 @Composable
-private fun StatusBar(state: EditorState) {
+private fun EditorTopBar(state: EditorState, onBack: (() -> Unit)?) {
+    var renaming by remember { mutableStateOf(false) }
+    var editingJson by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        RecordingDot(active = true, modifier = Modifier.size(8.dp))
+        if (onBack != null) {
+            Text(
+                "←",
+                color = WorkbenchColors.Icon,
+                fontSize = 18.sp,
+                modifier = Modifier.clickable(onClick = onBack).padding(end = 2.dp),
+            )
+        } else {
+            RecordingDot(active = true, modifier = Modifier.size(8.dp))
+        }
         Text(
             state.pattern.name.uppercase(),
             color = WorkbenchColors.InkDim,
             fontSize = 12.sp,
             letterSpacing = 0.12.sp,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).clickable { renaming = true },
         )
         Text(
             "${state.hapticEvents.size}H · ${state.audioEvents.size}A",
             color = WorkbenchColors.InkDim,
             fontSize = 12.sp,
         )
+        // Technical-workspace-only: Edit-as-JSON is a power-user tool, hidden in the default Vibe mode.
+        if (state.workspaceMode == WorkspaceMode.TECHNICAL) {
+            Text(
+                "{ }",
+                color = WorkbenchColors.Icon,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { editingJson = true },
+            )
+        }
+        Text(
+            "↶",
+            color = if (state.canUndo) WorkbenchColors.Icon else WorkbenchColors.Muted,
+            fontSize = 16.sp,
+            modifier = Modifier.clickable(enabled = state.canUndo) { state.undo() },
+        )
+        Text(
+            "↷",
+            color = if (state.canRedo) WorkbenchColors.Icon else WorkbenchColors.Muted,
+            fontSize = 16.sp,
+            modifier = Modifier.clickable(enabled = state.canRedo) { state.redo() },
+        )
     }
+    if (renaming) {
+        RenamePatternDialog(state = state, onDismiss = { renaming = false })
+    }
+    if (editingJson) {
+        EditAsJsonSheet(state = state, onDismiss = { editingJson = false })
+    }
+}
+
+@Composable
+private fun RenamePatternDialog(state: EditorState, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(state.pattern.name) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename pattern") },
+        text = {
+            OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true)
+        },
+        confirmButton = {
+            TextButton(onClick = { state.renamePattern(text); onDismiss() }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+/**
+ * The "Edit as JSON" sheet (Phase 5, technical workspace): the raw IR, round-tripped through
+ * [PatternSerialization] rather than through sliders. Applying invalid JSON shows an inline error
+ * and leaves the pattern untouched — it never throws into the UI.
+ */
+@Composable
+private fun EditAsJsonSheet(state: EditorState, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(PatternSerialization.encode(state.pattern)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit as JSON") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth().height(320.dp),
+                )
+                state.jsonEditError?.let {
+                    Text(it, color = HyleRoles.Destructive, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (state.applyPatternJson(text)) onDismiss() }) { Text("Apply") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 /** Chin row (recorder2 .chinrow): dark battery pill + speaker grille. */
@@ -272,12 +408,13 @@ private fun ChinRow() {
 
 /**
  * The transport slab (recorder2 .controls): one rounded #050402 surface with 2dp seams.
- * Layout: [big Play] [big Stop] [stack: Gallery / Replay].
- * Mapping to the workbench: Play → play current; Stop → (reserved); Gallery → open gallery;
- * Replay → play current again.
+ * Layout: [big Play] [big Stop] [Replay].
+ * Mapping to the workbench: Play → play current; Stop → (reserved); Replay → play current again.
+ * (The third column used to also hold a "Gallery" key into the legacy native-Views feel-test gallery;
+ * that activity is gone as of Phase 7, so Replay now fills the whole column.)
  */
 @Composable
-private fun KeypadSlab(state: EditorState, onOpenGallery: (() -> Unit)?) {
+private fun KeypadSlab(state: EditorState) {
     Column(Modifier.fillMaxWidth()) {
         Box(
             Modifier
@@ -290,12 +427,13 @@ private fun KeypadSlab(state: EditorState, onOpenGallery: (() -> Unit)?) {
                 Modifier.fillMaxWidth().height(120.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                // Big Play key (red glyph, glows red when playable)
+                // Big Play key: violet action glyph (GlyphRec), radium "armed/live" glow when playable —
+                // the D5 split between primary-action color and playback/live-state color.
                 KeypadCell(
                     onClick = { state.playCurrent() },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     domeFraction = 0.80f,
-                    glow = if (state.canPlay) WorkbenchColors.Red else Color.Transparent,
+                    glow = if (state.canPlay) HyleRoles.PlaybackGlow else Color.Transparent,
                     glyph = { GlyphRec() },
                 )
                 // Big Stop key
@@ -305,24 +443,13 @@ private fun KeypadSlab(state: EditorState, onOpenGallery: (() -> Unit)?) {
                     domeFraction = 0.80f,
                     glyph = { GlyphStop() },
                 )
-                // Stack of two small keys
-                Column(
-                    Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    KeypadCell(
-                        onClick = { onOpenGallery?.invoke() },
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        domeFraction = 0.70f,
-                        glyph = { Text("≡", color = WorkbenchColors.Icon, fontSize = 16.sp) },
-                    )
-                    KeypadCell(
-                        onClick = { state.playCurrent() },
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        domeFraction = 0.70f,
-                        glyph = { Text("↻", color = WorkbenchColors.Icon, fontSize = 16.sp) },
-                    )
-                }
+                // Replay key
+                KeypadCell(
+                    onClick = { state.playCurrent() },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    domeFraction = 0.70f,
+                    glyph = { Text("↻", color = WorkbenchColors.Icon, fontSize = 16.sp) },
+                )
             }
         }
         if (!state.canPlay) {

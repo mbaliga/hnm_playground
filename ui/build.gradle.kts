@@ -43,6 +43,9 @@ kotlin {
                 implementation(compose.foundation)
                 implementation(compose.material3)
                 implementation(compose.ui)
+                // :core declares this as `implementation`, so it isn't visible transitively; EditorState
+                // needs `delay()` for the chrome priority latch's playback-duration timeout.
+                implementation(libs.kotlinx.coroutines.core)
             }
         }
         val jvmMain by getting {

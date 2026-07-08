@@ -317,4 +317,96 @@ object BuiltInPatterns {
         NOTIFICATION, TOGGLE_ON, TOGGLE_OFF, SWIPE, SNAP, HEARTBEAT,
         TRIPLE_TICK, SPIN_LOCK,
     )
+
+    // ---------------------------------------------------------------------------
+    // Chrome — the app's own interface feel vocabulary (UX brief §3.3). Deliberately NOT part of [ALL]:
+    // these are ambient interface feedback (tap/confirm/detent/land/boundary/error/navigate), not
+    // patterns a user browses or feels as content. They're routed through the normal scheduleHaptics
+    // path (so they degrade by capability like everything else) via [dev.hnm.workbench.core.playback
+    // .ChromePlayer], which also gates them: never below hasAmplitudeControl, never while a real
+    // pattern is playing or a slider is being dragged (the "priority latch"), and scaled by the
+    // Interface-feels setting (Off/Subtle/Full).
+    // ---------------------------------------------------------------------------
+
+    /** Acknowledged — a generic tap/press landed. Low intensity, mid sharpness; deliberately quiet. */
+    val CHROME_TAP = HapticAudioPattern(
+        name = "chrome.tap",
+        tracks = listOf(
+            HapticTrack(id = "h1", events = listOf(Transient(time = 0.0, intensity = 0.35, sharpness = 0.6))),
+        ),
+    )
+
+    /** Committed / saved — reuses [CONFIRM] verbatim per the brief ("the existing CONFIRM built-in"). */
+    val CHROME_CONFIRM = CONFIRM.copy(name = "chrome.confirm")
+
+    /** Snapped to a grid line or discrete value — e.g. a timeline drag crossing a snap point. */
+    val CHROME_DETENT = HapticAudioPattern(
+        name = "chrome.detent",
+        tracks = listOf(
+            HapticTrack(id = "h1", events = listOf(Primitive(time = 0.0, type = PrimitiveType.LOW_TICK, scale = 0.4))),
+        ),
+    )
+
+    /** An element settled — drag released, a sheet came to rest. */
+    val CHROME_LAND = HapticAudioPattern(
+        name = "chrome.land",
+        tracks = listOf(
+            HapticTrack(id = "h1", events = listOf(Primitive(time = 0.0, type = PrimitiveType.TICK, scale = 0.5))),
+        ),
+    )
+
+    /** End of range — a slider or scroll can't go further. Short, dull; a wall, not a warning. */
+    val CHROME_BOUNDARY = HapticAudioPattern(
+        name = "chrome.boundary",
+        tracks = listOf(
+            HapticTrack(
+                id = "h1",
+                events = listOf(
+                    Continuous(
+                        time = 0.0, duration = 0.06, intensity = 0.4, sharpness = 0.15,
+                        envelope = Envelope(attack = 0.005, release = 0.03),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    /** Rejected — an action was refused. Shape and rhythm carry the meaning, never color/hue. */
+    val CHROME_ERROR = HapticAudioPattern(
+        name = "chrome.error",
+        tracks = listOf(
+            HapticTrack(
+                id = "h1",
+                events = listOf(
+                    Transient(time = 0.0, intensity = 0.5, sharpness = 0.2),
+                    Transient(time = 0.09, intensity = 0.5, sharpness = 0.2),
+                ),
+            ),
+        ),
+    )
+
+    /** Tab or route change — a light, quick click; wayfinding, not a decision. */
+    val CHROME_NAVIGATE = HapticAudioPattern(
+        name = "chrome.navigate",
+        tracks = listOf(
+            HapticTrack(id = "h1", events = listOf(Primitive(time = 0.0, type = PrimitiveType.CLICK, scale = 0.5))),
+        ),
+    )
+
+    /** Every chrome pattern, in the same order as [ChromeSemantic]'s entries. */
+    val CHROME: List<HapticAudioPattern> = listOf(
+        CHROME_TAP, CHROME_CONFIRM, CHROME_DETENT, CHROME_LAND,
+        CHROME_BOUNDARY, CHROME_ERROR, CHROME_NAVIGATE,
+    )
+}
+
+/** Type-safe handle for a [BuiltInPatterns.CHROME] entry — see [BuiltInPatterns.CHROME] for the patterns. */
+enum class ChromeSemantic(val pattern: HapticAudioPattern) {
+    TAP(BuiltInPatterns.CHROME_TAP),
+    CONFIRM(BuiltInPatterns.CHROME_CONFIRM),
+    DETENT(BuiltInPatterns.CHROME_DETENT),
+    LAND(BuiltInPatterns.CHROME_LAND),
+    BOUNDARY(BuiltInPatterns.CHROME_BOUNDARY),
+    ERROR(BuiltInPatterns.CHROME_ERROR),
+    NAVIGATE(BuiltInPatterns.CHROME_NAVIGATE),
 }

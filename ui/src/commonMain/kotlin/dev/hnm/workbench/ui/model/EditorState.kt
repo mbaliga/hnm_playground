@@ -9,6 +9,7 @@ import dev.hnm.workbench.core.design.PatternGenerator
 import dev.hnm.workbench.core.design.RhythmCapture
 import dev.hnm.workbench.core.design.Tap
 import dev.hnm.workbench.core.design.Variations
+import dev.hnm.workbench.core.device.DeviceProfile
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
 import dev.hnm.workbench.core.dsp.PatternTiming
 import dev.hnm.workbench.core.export.AhapExporter
@@ -29,11 +30,21 @@ import dev.hnm.workbench.core.ir.Transient
 import dev.hnm.workbench.core.ir.Waveform
 import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.core.library.PatternLibrary
+import dev.hnm.workbench.core.playback.ChromePlayer
 import dev.hnm.workbench.core.playback.HapticCapabilities
+import dev.hnm.workbench.core.playback.InterfaceFeelLevel
 import dev.hnm.workbench.core.playback.PatternPlayer
+import kotlinx.coroutines.delay
 
 /** The format shown in the export panel. */
 enum class ExportKind { JSON, KOTLIN, AHAP }
+
+/**
+ * Which editing surface the Editor shows (UX brief §5, onboarding beat 5). `VIBE` is the default and
+ * hides technical tools (Edit-as-JSON) that most people never need; `TECHNICAL` reveals them. Chosen
+ * once during onboarding, changeable any time — this is a display gate, not a different data model.
+ */
+enum class WorkspaceMode { VIBE, TECHNICAL }
 
 /**
  * Compose state holder for the editor. Keeps the current [HapticAudioPattern] plus selection, target
@@ -44,14 +55,116 @@ class EditorState {
     var pattern by mutableStateOf<HapticAudioPattern>(BuiltInPatterns.CONFIRM)
         private set
 
-    var capabilities by mutableStateOf(HapticCapabilities.LRA_FULL)
+    private val capabilitiesState = mutableStateOf(HapticCapabilities.LRA_FULL)
+
+    /** The target device profile. Setting this also updates [chrome]'s capability gate. */
+    var capabilities: HapticCapabilities
+        get() = capabilitiesState.value
+        set(value) {
+            capabilitiesState.value = value
+            chrome.hasAmplitudeControl = value.hasAmplitudeControl
+        }
+
+    /**
+     * The real device currently being simulated, if the user picked one from the device database
+     * (as opposed to one of the four abstract capability tiers). Shared across the Editor's
+     * [dev.hnm.workbench.ui.components.CapabilityPanel] and the Device tab's hero card so both
+     * reflect the same selection instead of keeping independent local UI state.
+     */
+    var selectedDevice by mutableStateOf<DeviceProfile?>(null)
+
+    /** Simulate [device]'s real capabilities (resonant frequency, Q, primitives, etc). */
+    fun selectDevice(device: DeviceProfile) {
+        selectedDevice = device
+        capabilities = device.toCapabilities()
+    }
+
+    /** Switch to one of the four abstract capability tiers, clearing any simulated real device. */
+    fun selectCapabilityTier(tier: HapticCapabilities) {
+        selectedDevice = null
+        capabilities = tier
+    }
+
     var selectedEventIndex by mutableStateOf<Int?>(0)
     var exportKind by mutableStateOf(ExportKind.KOTLIN)
+    var workspaceMode by mutableStateOf(WorkspaceMode.VIBE)
     private var variationSeed = 1
+
+    // --- undo / redo (Phase 4: Editor top bar) ------------------------------
+
+    private val undoStack = mutableStateListOf<HapticAudioPattern>()
+    private val redoStack = mutableStateListOf<HapticAudioPattern>()
+
+    /** A pre-drag snapshot held while a coalesced edit (e.g. a slider drag) is in progress. */
+    private var historyBaseline: HapticAudioPattern? = null
+
+    val canUndo: Boolean get() = undoStack.isNotEmpty()
+    val canRedo: Boolean get() = redoStack.isNotEmpty()
+
+    private fun pushHistory(entry: HapticAudioPattern) {
+        undoStack.add(entry)
+        if (undoStack.size > MAX_HISTORY) undoStack.removeAt(0)
+        redoStack.clear()
+    }
+
+    /**
+     * Sets [pattern], recording undo history. Discrete edits (add/delete/load/rename) checkpoint
+     * immediately; [coalesce] = true folds a run of continuous changes (a slider drag) into a single
+     * undo step — call [commitEdit] when the drag ends (e.g. `onValueChangeFinished`).
+     */
+    private fun setPattern(newPattern: HapticAudioPattern, coalesce: Boolean = false) {
+        if (newPattern == pattern) return
+        if (coalesce) {
+            if (historyBaseline == null) historyBaseline = pattern
+        } else {
+            commitEdit()
+            pushHistory(pattern)
+        }
+        pattern = newPattern
+    }
+
+    /** Ends an in-progress coalesced drag, turning it into one undo step. No-op if nothing pending. */
+    fun commitEdit() {
+        val baseline = historyBaseline ?: return
+        historyBaseline = null
+        if (baseline != pattern) pushHistory(baseline)
+    }
+
+    fun undo() {
+        commitEdit()
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.add(pattern)
+        pattern = previous
+        clampSelectionToCurrentPattern()
+    }
+
+    fun redo() {
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.add(pattern)
+        pattern = next
+        clampSelectionToCurrentPattern()
+    }
+
+    /**
+     * Keeps the current selection where it is across undo/redo when the index is still valid — e.g.
+     * undoing a slider drag should keep the same event selected, not jump the inspector back to event 0.
+     */
+    private fun clampSelectionToCurrentPattern() {
+        selectedEventIndex = selectedEventIndex?.takeIf { it in hapticEvents.indices }
+        selectedAudioEventIndex = selectedAudioEventIndex?.takeIf { it in audioEvents.indices }
+    }
+
+    /** Renames the current pattern in place (Editor top-bar rename). Undoable like any other edit. */
+    fun renamePattern(newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isBlank() || trimmed == pattern.name) return
+        setPattern(pattern.copy(name = trimmed))
+    }
 
     /**
      * How the current pattern gets felt. Defaults to [PatternPlayer.None] (desktop has no actuator);
-     * the Android host injects a real player wired to the device's vibrator + speaker.
+     * the Android host injects a real player wired to the device's vibrator + speaker. A delegating
+     * [PatternPlayer] (not a direct reference) so [chrome] keeps working after this is reassigned.
      */
     var player: PatternPlayer = PatternPlayer.None
 
@@ -60,6 +173,37 @@ class EditorState {
 
     /** Feel the current pattern on the device, if a real player is wired. */
     fun playCurrent() = player.play(pattern)
+
+    // --- interface feel (UX brief §3.3) -------------------------------------
+
+    /**
+     * Gates and plays the app's own chrome.* feedback (tab switches, snaps, boundaries — never content).
+     * Delegates through the live [player] so reassigning it (e.g. the Android host wiring a real
+     * actuator after construction) doesn't require rebuilding this.
+     */
+    val chrome: ChromePlayer = ChromePlayer(
+        player = PatternPlayer { p -> player.play(p) },
+        hasAmplitudeControl = capabilities.hasAmplitudeControl,
+    )
+
+    var interfaceFeelLevel: InterfaceFeelLevel
+        get() = chrome.level
+        set(value) { chrome.level = value }
+
+    /**
+     * Play the current pattern with the chrome priority latch held for its approximate duration, so
+     * ambient interface feedback never fires over real content. Desktop/no-actuator hosts still get the
+     * latch (harmless — [chrome] would no-op there anyway since nothing calls it mid-playback).
+     */
+    suspend fun playCurrentLatched() {
+        chrome.busy = true
+        try {
+            playCurrent()
+            delay((durationSeconds * 1000).toLong().coerceAtLeast(1))
+        } finally {
+            chrome.busy = false
+        }
+    }
 
     // --- AI assistant ------------------------------------------------------
 
@@ -196,14 +340,18 @@ class EditorState {
 
     // --- haptic event edits ------------------------------------------------
 
-    /** Replace the selected haptic event via [transform]. No-op if nothing selected. */
+    /**
+     * Replace the selected haptic event via [transform]. No-op if nothing selected. Callers are all
+     * slider-driven (intensity/sharpness/time/duration/envelope), so edits coalesce into one undo step
+     * per drag — see [commitEdit].
+     */
     fun updateSelected(transform: (HapticEvent) -> HapticEvent) {
         val idx = selectedEventIndex ?: return
         val track = hapticTrack ?: return
         val events = track.events.toMutableList()
         if (idx !in events.indices) return
         events[idx] = transform(events[idx])
-        replaceHapticTrack(track.copy(events = events))
+        replaceHapticTrack(track.copy(events = events), coalesce = true)
     }
 
     fun setSelectedIntensity(value: Double) = updateSelected { e ->
@@ -328,7 +476,8 @@ class EditorState {
         }
     }
 
-    fun setSelectedAudioWaveform(value: Waveform) = updateSelectedAudio { ev ->
+    // A discrete pick (dropdown), not a drag — checkpoint immediately rather than coalescing.
+    fun setSelectedAudioWaveform(value: Waveform) = updateSelectedAudio(coalesce = false) { ev ->
         when (ev) {
             is OscEvent -> ev.copy(waveform = value)
             else -> ev
@@ -343,34 +492,52 @@ class EditorState {
         selectAudio(null)
     }
 
-    private fun updateSelectedAudio(transform: (AudioEvent) -> AudioEvent) {
+    private fun updateSelectedAudio(coalesce: Boolean = true, transform: (AudioEvent) -> AudioEvent) {
         val idx = selectedAudioEventIndex ?: return
         val track = audioTrack ?: return
         val events = track.events.toMutableList()
         if (idx !in events.indices) return
         events[idx] = transform(events[idx])
-        replaceAudioTrack(track.copy(events = events))
+        replaceAudioTrack(track.copy(events = events), coalesce = coalesce)
     }
 
     // --- pattern-level operations ------------------------------------------
 
     fun mutate() {
-        pattern = Variations.mutate(pattern, amount = 0.2, seed = variationSeed++)
+        setPattern(Variations.mutate(pattern, amount = 0.2, seed = variationSeed++))
         select(0)
     }
 
     fun reset() {
-        pattern = BuiltInPatterns.CONFIRM
+        setPattern(BuiltInPatterns.CONFIRM)
         variationSeed = 1
         select(0)
     }
 
     /** Replace the whole pattern (e.g. when loading a motion primitive or library entry). */
     fun load(newPattern: HapticAudioPattern) {
-        pattern = newPattern
+        setPattern(newPattern)
         variationSeed = 1
         select(if (hapticEventsOf(newPattern).isNotEmpty()) 0 else null)
         selectedAudioEventIndex = null
+    }
+
+    // --- edit as JSON (Phase 5: technical workspace) ------------------------
+
+    /** Error from the last "Edit as JSON" apply attempt; null once an apply succeeds. */
+    var jsonEditError by mutableStateOf<String?>(null)
+        private set
+
+    /** Parses [text] as the pattern's JSON and loads it on success. Never throws. */
+    fun applyPatternJson(text: String): Boolean {
+        return try {
+            load(PatternSerialization.decode(text))
+            jsonEditError = null
+            true
+        } catch (t: Throwable) {
+            jsonEditError = "Couldn't parse that JSON: ${t.message ?: "unknown error"}"
+            false
+        }
     }
 
     fun exportText(): String = when (exportKind) {
@@ -392,17 +559,23 @@ class EditorState {
     private fun hapticEventsOf(p: HapticAudioPattern) =
         p.tracks.filterIsInstance<HapticTrack>().firstOrNull()?.events ?: emptyList()
 
-    private fun replaceHapticTrack(updated: HapticTrack) {
+    private fun replaceHapticTrack(updated: HapticTrack, coalesce: Boolean = false) {
         val tracks = pattern.tracks.map { if (it.id == updated.id) updated else it }
-        pattern = pattern.copy(
-            tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated,
+        setPattern(
+            pattern.copy(tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated),
+            coalesce = coalesce,
         )
     }
 
-    private fun replaceAudioTrack(updated: AudioTrack) {
+    private fun replaceAudioTrack(updated: AudioTrack, coalesce: Boolean = false) {
         val tracks = pattern.tracks.map { if (it.id == updated.id) updated else it }
-        pattern = pattern.copy(
-            tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated,
+        setPattern(
+            pattern.copy(tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated),
+            coalesce = coalesce,
         )
+    }
+
+    private companion object {
+        const val MAX_HISTORY = 50
     }
 }

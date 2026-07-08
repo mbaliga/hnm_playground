@@ -43,23 +43,37 @@ data class RegistryIndex(
             codec.encodeToString(serializer(), index)
 
         /**
-         * The bundled starter registry: every built-in reference pattern, tagged so the gallery can
-         * group them. Grows by appending [RegistryEntry] rows (a user-submitted pattern is just another
-         * entry, contributable by PR).
+         * The bundled starter registry: every built-in reference pattern (tag "reference") plus the
+         * app's own `chrome.*` interface-feel vocabulary (tag "chrome" — UX brief §3.3). Chrome entries
+         * are real registry rows, so they're inspectable, but callers building a user-facing gallery
+         * should filter them out by default: `entries.filter { "chrome" !in it.tags }` (or
+         * `withTag("reference")`). Grows by appending [RegistryEntry] rows (a user-submitted pattern is
+         * just another entry, contributable by PR).
          */
         fun seed(): RegistryIndex = RegistryIndex(
             title = "Built-in starter pack",
             entries = BuiltInPatterns.ALL.map { p ->
                 RegistryEntry(
-                    id = p.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-'),
+                    id = slug(p.name),
                     name = p.name,
                     author = "built-in",
                     tags = listOf("reference"),
                     description = "Built-in reference pattern.",
                     pattern = p,
                 )
+            } + BuiltInPatterns.CHROME.map { p ->
+                RegistryEntry(
+                    id = slug(p.name),
+                    name = p.name,
+                    author = "built-in",
+                    tags = listOf("chrome"),
+                    description = "App interface feedback — not user-facing content.",
+                    pattern = p,
+                )
             },
         )
+
+        private fun slug(name: String): String = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
 
         fun seedJson(): String = toJson(seed())
     }
