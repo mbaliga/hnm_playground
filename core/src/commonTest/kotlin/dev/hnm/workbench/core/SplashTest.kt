@@ -86,4 +86,48 @@ class SplashTest {
             assertTrue(it.x * it.x + it.y * it.y <= 1.2f)
         }
     }
+
+    @Test
+    fun latticeBurstsOutwardThenClears() {
+        val beats = listOf(0.0, 0.16, 0.32)
+        // Just after the first beat, only the centre (radius 0) cell is lit.
+        val early = SplashGeometry.lattice(0.05, beats)
+        assertTrue(early.isNotEmpty())
+        assertTrue(early.all { it.col == 3 && it.row == 3 }, "first beat should light only the centre cell")
+        // Long after every beat, nothing remains lit.
+        assertTrue(SplashGeometry.lattice(5.0, beats).isEmpty())
+    }
+
+    @Test
+    fun latticeSecondBeatLightsARingOneStepOut() {
+        val beats = listOf(0.0, 0.16)
+        val afterSecond = SplashGeometry.lattice(0.17, beats)
+        // The second beat's ring (Manhattan distance 1 from centre) should be present alongside the
+        // first beat's decaying centre cell.
+        assertTrue(afterSecond.any { kotlin.math.abs(it.col - 3) + kotlin.math.abs(it.row - 3) == 1 })
+    }
+
+    @Test
+    fun paletteMixAndVoiceAreDeterministicInSeed() {
+        val a = SplashMotifs.generate(11)
+        val b = SplashMotifs.generate(11)
+        assertEquals(a.paletteMix, b.paletteMix, 1e-12)
+        assertEquals(a.voice, b.voice)
+        assertTrue(a.paletteMix in 0.0..1.0)
+    }
+
+    @Test
+    fun differentSeedsCanProduceDifferentVoices() {
+        val voices = (0 until 30).map { SplashMotifs.generate(it).voice }.toSet()
+        assertTrue(voices.size > 1, "30 seeds should surface more than one material voice")
+    }
+
+    @Test
+    fun latticeSceneRendersBothPathsLikeEveryOtherMotif() {
+        val lattice = SplashMotifs.all().first { it.visual == SplashVisual.LATTICE }
+        val cmds = renderer.scheduleHaptics(lattice.pattern, HapticCapabilities.LRA_FULL)
+        assertTrue(cmds.isNotEmpty())
+        val audio = renderer.renderAudio(lattice.pattern, 48_000).readAll()
+        assertTrue(audio.any { kotlin.math.abs(it) > 1e-4 })
+    }
 }

@@ -22,12 +22,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import dev.hnm.workbench.ui.splash.SplashPreferences
+import dev.hnm.workbench.ui.splash.shouldShowSplash
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -103,8 +106,11 @@ fun WorkbenchWithSplash(
     onOpenGallery: (() -> Unit)? = null,
     onSelfTest: (() -> Unit)? = null,
     onCaptureDeviceReport: (() -> String)? = null,
+    preferences: SplashPreferences = remember { SplashPreferences.inMemory() },
+    reducedMotion: Boolean = false,
 ) {
-    var showSplash by remember { mutableStateOf(true) }
+    var showSplash by remember { mutableStateOf(preferences.shouldShowSplash()) }
+    LaunchedEffect(Unit) { preferences.launchCount += 1 }
     val scene = remember(seed) { dev.hnm.workbench.core.design.SplashMotifs.generate(seed) }
     AppShell(
         state = state,
@@ -117,6 +123,7 @@ fun WorkbenchWithSplash(
             scene = scene,
             onStart = { if (state.canPlay) state.player.play(scene.pattern) },
             onFinished = { showSplash = false },
+            reducedMotion = reducedMotion,
         )
     }
 }

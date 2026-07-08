@@ -20,9 +20,14 @@ object SplashGeometry {
     /** A spark particle, centre-relative unit coordinates. */
     data class Spark(val x: Float, val y: Float, val alpha: Float, val size: Float)
 
+    /** A lit lattice cell, in grid-index coordinates (renderer maps col/row onto its own cell size). */
+    data class LatticeCell(val col: Int, val row: Int, val alpha: Float)
+
     private const val RING_LIFE = 1.15
     private const val SPARK_LIFE = 0.9
     private const val SPARKS_PER_BEAT = 7
+    private const val LATTICE_SIZE = 7
+    private const val LATTICE_CELL_LIFE = 0.5
 
     /** Global fade-in/out envelope so the splash eases in and out instead of cutting. */
     fun masterAlpha(tSec: Double, durSec: Double): Float {
@@ -90,6 +95,31 @@ object SplashGeometry {
                     alpha = alpha,
                     size = (0.12 * (1.0 - p) + 0.03).toFloat(),
                 )
+            }
+        }
+        return out
+    }
+
+    /**
+     * LATTICE: energy propagating across the dot-grid substrate itself — each beat lights a Manhattan-
+     * distance ring of cells one step further from centre than the last (a diamond burst spreading
+     * outward), so the four/five taps of the pattern read as a wave crossing the grid, not a random
+     * flicker. [LATTICE_SIZE]×[LATTICE_SIZE] grid, centred.
+     */
+    fun lattice(tSec: Double, beats: List<Double>): List<LatticeCell> {
+        val out = ArrayList<LatticeCell>()
+        val mid = LATTICE_SIZE / 2
+        beats.forEachIndexed { bi, b ->
+            val age = tSec - b
+            if (age < 0.0 || age > LATTICE_CELL_LIFE) return@forEachIndexed
+            val p = age / LATTICE_CELL_LIFE
+            val alpha = (1.0 - p).toFloat()
+            val radius = bi
+            for (col in 0 until LATTICE_SIZE) {
+                for (row in 0 until LATTICE_SIZE) {
+                    val d = kotlin.math.abs(col - mid) + kotlin.math.abs(row - mid)
+                    if (d == radius) out += LatticeCell(col, row, alpha)
+                }
             }
         }
         return out

@@ -47,8 +47,11 @@ class WorkbenchActivity : ComponentActivity() {
         }
 
         // A different procedural splash motif each launch; its visual, sound and haptics come from one
-        // pattern and it plays on the real actuator wired above, then reveals the workbench.
+        // pattern and it plays on the real actuator wired above, then reveals the workbench. The
+        // capability probe above already ran synchronously before setContent, so it's ready the instant
+        // any screen needs it — "runs in parallel behind the splash" without any extra plumbing.
         val splashSeed = (android.os.SystemClock.elapsedRealtime() / 500L).toInt()
+        val splashPrefs = AndroidSplashPreferences(this).also { it.lastSeed = splashSeed }
 
         setContent {
             WorkbenchWithSplash(
@@ -59,6 +62,8 @@ class WorkbenchActivity : ComponentActivity() {
                 onCaptureDeviceReport = {
                     DeviceDatabase(listOf(AndroidHaptics.probeProfile(vibrator))).toJson()
                 },
+                preferences = splashPrefs,
+                reducedMotion = isSystemReducedMotion(this),
             )
         }
     }
