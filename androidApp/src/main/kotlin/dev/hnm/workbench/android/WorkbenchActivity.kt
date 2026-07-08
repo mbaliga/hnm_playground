@@ -52,6 +52,7 @@ class WorkbenchActivity : ComponentActivity() {
         // any screen needs it — "runs in parallel behind the splash" without any extra plumbing.
         val splashSeed = (android.os.SystemClock.elapsedRealtime() / 500L).toInt()
         val splashPrefs = AndroidSplashPreferences(this).also { it.lastSeed = splashSeed }
+        val onboardingPrefs = AndroidOnboardingPreferences(this)
 
         setContent {
             WorkbenchWithSplash(
@@ -63,6 +64,7 @@ class WorkbenchActivity : ComponentActivity() {
                     DeviceDatabase(listOf(AndroidHaptics.probeProfile(vibrator))).toJson()
                 },
                 preferences = splashPrefs,
+                onboardingPreferences = onboardingPrefs,
                 reducedMotion = isSystemReducedMotion(this),
             )
         }

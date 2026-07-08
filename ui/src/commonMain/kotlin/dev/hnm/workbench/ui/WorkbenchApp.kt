@@ -33,6 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import dev.hnm.workbench.ui.onboarding.OnboardingPreferences
+import dev.hnm.workbench.ui.onboarding.OnboardingScreen
 import dev.hnm.workbench.ui.splash.SplashPreferences
 import dev.hnm.workbench.ui.splash.shouldShowSplash
 import androidx.compose.ui.draw.clip
@@ -67,6 +69,7 @@ import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.components.WalkthroughCard
 import dev.hnm.workbench.core.ir.PatternSerialization
 import dev.hnm.workbench.ui.model.EditorState
+import dev.hnm.workbench.ui.model.WorkspaceMode
 import dev.hnm.workbench.ui.theme.HyleRoles
 import dev.hnm.workbench.ui.theme.WorkbenchColors
 import dev.hnm.workbench.ui.theme.WorkbenchTheme
@@ -100,10 +103,11 @@ fun WorkbenchApp(
 }
 
 /**
- * The app with a procedural splash overlaid on first launch. The splash's visual, sound and haptics all
- * come from one seed-selected [dev.hnm.workbench.core.design.SplashScene]; when it finishes (or is
- * tapped) the workbench is revealed. [WorkbenchApp] itself stays splash-free so headless render tests of
- * the editor are unaffected.
+ * The app with a procedural splash overlaid on first launch, followed by the six-beat onboarding
+ * walkthrough the first time it hasn't been completed. The splash's visual, sound and haptics all come
+ * from one seed-selected [dev.hnm.workbench.core.design.SplashScene]; when it finishes (or is tapped)
+ * onboarding shows (if not already done), then the workbench is revealed. [WorkbenchApp] itself stays
+ * splash/onboarding-free so headless render tests of the editor are unaffected.
  */
 @Composable
 fun WorkbenchWithSplash(
@@ -113,9 +117,13 @@ fun WorkbenchWithSplash(
     onSelfTest: (() -> Unit)? = null,
     onCaptureDeviceReport: (() -> String)? = null,
     preferences: SplashPreferences = remember { SplashPreferences.inMemory() },
+    onboardingPreferences: OnboardingPreferences = remember { OnboardingPreferences.inMemory() },
     reducedMotion: Boolean = false,
 ) {
     var showSplash by remember { mutableStateOf(preferences.shouldShowSplash()) }
+    // If the splash won't show this launch, onboarding's gate needs to be decided up front instead of
+    // waiting for a splash onFinished callback that will never fire.
+    var showOnboarding by remember { mutableStateOf(!preferences.shouldShowSplash() && !onboardingPreferences.completed) }
     LaunchedEffect(Unit) { preferences.launchCount += 1 }
     val scene = remember(seed) { dev.hnm.workbench.core.design.SplashMotifs.generate(seed) }
     AppShell(
@@ -128,8 +136,19 @@ fun WorkbenchWithSplash(
         SplashScreen(
             scene = scene,
             onStart = { if (state.canPlay) state.player.play(scene.pattern) },
-            onFinished = { showSplash = false },
+            onFinished = {
+                showSplash = false
+                showOnboarding = !onboardingPreferences.completed
+            },
             reducedMotion = reducedMotion,
+        )
+    } else if (showOnboarding) {
+        OnboardingScreen(
+            onComplete = { mode ->
+                state.workspaceMode = mode
+                onboardingPreferences.completed = true
+                showOnboarding = false
+            },
         )
     }
 }
@@ -290,12 +309,15 @@ private fun EditorTopBar(state: EditorState, onBack: (() -> Unit)?) {
             color = WorkbenchColors.InkDim,
             fontSize = 12.sp,
         )
-        Text(
-            "{ }",
-            color = WorkbenchColors.Icon,
-            fontSize = 12.sp,
-            modifier = Modifier.clickable { editingJson = true },
-        )
+        // Technical-workspace-only: Edit-as-JSON is a power-user tool, hidden in the default Vibe mode.
+        if (state.workspaceMode == WorkspaceMode.TECHNICAL) {
+            Text(
+                "{ }",
+                color = WorkbenchColors.Icon,
+                fontSize = 12.sp,
+                modifier = Modifier.clickable { editingJson = true },
+            )
+        }
         Text(
             "↶",
             color = if (state.canUndo) WorkbenchColors.Icon else WorkbenchColors.Muted,

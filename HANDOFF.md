@@ -8,17 +8,17 @@
 **Repo:** `mbaliga/hnm_playground`
 **Default branch:** `main`
 **Working/feature branch:** `claude/haptics-audio-workbench-lgmpsf`
-**Current app version:** `0.21.0` (versionCode 22) — in-app diagnostics line reads `build v0.21`
+**Current app version:** `0.22.0` (versionCode 23) — in-app diagnostics line reads `build v0.22`
 **Latest debug APK:** published to the rolling GitHub Release tag `android-player-debug`
 (filename is version+SHA stamped, e.g. `haptics-player-vX.Y.Z-<shortsha>.apk`).
 
 ---
 
-## 0. UX rebuild status (v1.1 brief, Phases 0–5 of 8)
+## 0. UX rebuild status (v1.1 brief, Phases 0–6 of 8)
 
 Since `v0.15.0` the app has been rebuilt around a new IA and a Hyle-derived design system,
 per a separate "UX Build Brief v1.1" (D1–D6 decisions, per-screen specs, an 8-phase plan).
-Phases 0–5 are done (Phase 5 deliberately scoped down); **see [STATE.md](STATE.md) for the
+Phases 0–6 are done (Phases 5–6 partially scoped down); **see [STATE.md](STATE.md) for the
 up-to-date one-paragraph summary of each**. In short:
 
 - `AppShell` replaces the old single-activity gallery flow: three tabs (**Feel** home / **Make**
@@ -40,7 +40,14 @@ up-to-date one-paragraph summary of each**. In short:
   gating it, a command strip, a tabular envelope-breakpoint editor, and a loop region for preview
   playback — are deferred, not built. (The brief's "rendered lanes" ask was already satisfied by
   the pre-existing `TimelineView`, which draws haptic + audio as two lanes on one canvas.)
-- Phases 6–7 (onboarding + device hero card, polish pass) are not started.
+- Phase 6 shipped a six-beat onboarding walkthrough (`ui/.../onboarding/OnboardingScreen.kt`), shown
+  once after the splash (`OnboardingPreferences`, mirroring `SplashPreferences`'s shape), and a real
+  Device tab hero card (name, resonant frequency, Q factor) fed by a newly-shared
+  `EditorState.selectedDevice` — previously `CapabilityPanel`'s device pick was local UI state
+  invisible to the Device tab. Onboarding's last beat is interactive: it sets `WorkspaceMode`
+  (Vibe/Technical), which now gates the Editor's Edit-as-JSON button (Phase 5's tool is hidden by
+  default in Vibe mode). Not done: a "replay onboarding" entry point once it's been completed once.
+- Phase 7 (polish pass) is not started.
 - Acceptance criteria that need a physical device or a human tester (60fps on-device, a TalkBack
   pass, "≤60s to first satisfying pattern" by stopwatch) cannot be machine-verified in this
   environment, consistent with this doc's existing §9 caveat that on-actuator feel is

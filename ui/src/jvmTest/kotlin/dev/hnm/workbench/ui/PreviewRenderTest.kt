@@ -111,6 +111,27 @@ class PreviewRenderTest {
     }
 
     @Test
+    fun rendersDeviceScreenWithSimulatedDeviceHeroCard() {
+        // Phase 6: picking a real device (as CapabilityPanel does) should show its resonant
+        // frequency/Q on the Device tab's hero card, via the same EditorState.selectedDevice.
+        val state = EditorState().apply {
+            selectDevice(dev.hnm.workbench.core.device.DeviceDatabase.seeded().all.first())
+        }
+        val scene = ImageComposeScene(width = 420, height = 900, density = Density(1f)) {
+            dev.hnm.workbench.ui.screens.DeviceScreen(state = state)
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/screen-device-hero.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "Device hero card didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
     fun rendersEditorToPng() {
         val width = 1180
         val height = 820
@@ -244,6 +265,22 @@ class PreviewRenderTest {
             File("build/preview").apply { mkdirs() }
             File("build/preview/workbench-assistant.png").writeBytes(png)
             assertTrue(png.size > 5_000)
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersOnboardingFirstBeat() {
+        val scene = ImageComposeScene(width = 420, height = 900, density = Density(1f)) {
+            dev.hnm.workbench.ui.onboarding.OnboardingScreen(onComplete = {})
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/onboarding-beat-1.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "Onboarding didn't compose (${png.size} bytes)")
         } finally {
             scene.close()
         }

@@ -13,10 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +43,6 @@ private val PROFILES = listOf(
 @Composable
 fun CapabilityPanel(state: EditorState, modifier: Modifier = Modifier) {
     val devices = remember { DeviceDatabase.seeded() }
-    var selectedDeviceId by remember { mutableStateOf<String?>(null) }
 
     Column(modifier) {
         Text("Target device", color = WorkbenchColors.Muted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
@@ -57,8 +53,8 @@ fun CapabilityPanel(state: EditorState, modifier: Modifier = Modifier) {
         ) {
             for ((label, caps) in PROFILES) {
                 FilterChip(
-                    selected = state.capabilities == caps && selectedDeviceId == null,
-                    onClick = { state.capabilities = caps; selectedDeviceId = null },
+                    selected = state.capabilities == caps && state.selectedDevice == null,
+                    onClick = { state.selectCapabilityTier(caps) },
                     label = { Text(label, fontSize = 11.sp) },
                 )
             }
@@ -78,16 +74,13 @@ fun CapabilityPanel(state: EditorState, modifier: Modifier = Modifier) {
             for (device in devices.all) {
                 DeviceChip(
                     device = device,
-                    selected = selectedDeviceId == device.id,
-                    onClick = {
-                        state.capabilities = device.toCapabilities()
-                        selectedDeviceId = device.id
-                    },
+                    selected = state.selectedDevice?.id == device.id,
+                    onClick = { state.selectDevice(device) },
                 )
             }
         }
 
-        val device = selectedDeviceId?.let { devices.get(it) }
+        val device = state.selectedDevice
         if (device != null) {
             Text(
                 "${device.marketName} · ${device.summary()}",

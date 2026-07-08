@@ -9,6 +9,7 @@ import dev.hnm.workbench.core.design.PatternGenerator
 import dev.hnm.workbench.core.design.RhythmCapture
 import dev.hnm.workbench.core.design.Tap
 import dev.hnm.workbench.core.design.Variations
+import dev.hnm.workbench.core.device.DeviceProfile
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
 import dev.hnm.workbench.core.dsp.PatternTiming
 import dev.hnm.workbench.core.export.AhapExporter
@@ -39,6 +40,13 @@ import kotlinx.coroutines.delay
 enum class ExportKind { JSON, KOTLIN, AHAP }
 
 /**
+ * Which editing surface the Editor shows (UX brief §5, onboarding beat 5). `VIBE` is the default and
+ * hides technical tools (Edit-as-JSON) that most people never need; `TECHNICAL` reveals them. Chosen
+ * once during onboarding, changeable any time — this is a display gate, not a different data model.
+ */
+enum class WorkspaceMode { VIBE, TECHNICAL }
+
+/**
  * Compose state holder for the editor. Keeps the current [HapticAudioPattern] plus selection, target
  * capability profile, pattern library, and rhythm capture state. All heavy lifting lives in `core`;
  * the UI is a thin shell. IR is immutable — edits replace the whole pattern.
@@ -57,8 +65,29 @@ class EditorState {
             chrome.hasAmplitudeControl = value.hasAmplitudeControl
         }
 
+    /**
+     * The real device currently being simulated, if the user picked one from the device database
+     * (as opposed to one of the four abstract capability tiers). Shared across the Editor's
+     * [dev.hnm.workbench.ui.components.CapabilityPanel] and the Device tab's hero card so both
+     * reflect the same selection instead of keeping independent local UI state.
+     */
+    var selectedDevice by mutableStateOf<DeviceProfile?>(null)
+
+    /** Simulate [device]'s real capabilities (resonant frequency, Q, primitives, etc). */
+    fun selectDevice(device: DeviceProfile) {
+        selectedDevice = device
+        capabilities = device.toCapabilities()
+    }
+
+    /** Switch to one of the four abstract capability tiers, clearing any simulated real device. */
+    fun selectCapabilityTier(tier: HapticCapabilities) {
+        selectedDevice = null
+        capabilities = tier
+    }
+
     var selectedEventIndex by mutableStateOf<Int?>(0)
     var exportKind by mutableStateOf(ExportKind.KOTLIN)
+    var workspaceMode by mutableStateOf(WorkspaceMode.VIBE)
     private var variationSeed = 1
 
     // --- undo / redo (Phase 4: Editor top bar) ------------------------------
