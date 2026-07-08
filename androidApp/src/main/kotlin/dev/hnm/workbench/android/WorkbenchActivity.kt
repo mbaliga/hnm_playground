@@ -9,7 +9,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import dev.hnm.workbench.core.playback.HapticCapabilities
-import dev.hnm.workbench.ui.WorkbenchApp
+import dev.hnm.workbench.ui.WorkbenchWithSplash
 import dev.hnm.workbench.ui.model.EditorState
 
 /**
@@ -42,9 +42,14 @@ class WorkbenchActivity : ComponentActivity() {
             )
         }
 
+        // A different procedural splash motif each launch; its visual, sound and haptics come from one
+        // pattern and it plays on the real actuator wired above, then reveals the workbench.
+        val splashSeed = (android.os.SystemClock.elapsedRealtime() / 500L).toInt()
+
         setContent {
-            WorkbenchApp(
+            WorkbenchWithSplash(
                 state = state,
+                seed = splashSeed,
                 onOpenGallery = { startActivity(Intent(this, MainActivity::class.java)) },
             )
         }
