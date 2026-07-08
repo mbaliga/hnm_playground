@@ -29,8 +29,11 @@ import dev.hnm.workbench.core.ir.Transient
 import dev.hnm.workbench.core.ir.Waveform
 import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.core.library.PatternLibrary
+import dev.hnm.workbench.core.playback.ChromePlayer
 import dev.hnm.workbench.core.playback.HapticCapabilities
+import dev.hnm.workbench.core.playback.InterfaceFeelLevel
 import dev.hnm.workbench.core.playback.PatternPlayer
+import kotlinx.coroutines.delay
 
 /** The format shown in the export panel. */
 enum class ExportKind { JSON, KOTLIN, AHAP }
@@ -44,14 +47,24 @@ class EditorState {
     var pattern by mutableStateOf<HapticAudioPattern>(BuiltInPatterns.CONFIRM)
         private set
 
-    var capabilities by mutableStateOf(HapticCapabilities.LRA_FULL)
+    private val capabilitiesState = mutableStateOf(HapticCapabilities.LRA_FULL)
+
+    /** The target device profile. Setting this also updates [chrome]'s capability gate. */
+    var capabilities: HapticCapabilities
+        get() = capabilitiesState.value
+        set(value) {
+            capabilitiesState.value = value
+            chrome.hasAmplitudeControl = value.hasAmplitudeControl
+        }
+
     var selectedEventIndex by mutableStateOf<Int?>(0)
     var exportKind by mutableStateOf(ExportKind.KOTLIN)
     private var variationSeed = 1
 
     /**
      * How the current pattern gets felt. Defaults to [PatternPlayer.None] (desktop has no actuator);
-     * the Android host injects a real player wired to the device's vibrator + speaker.
+     * the Android host injects a real player wired to the device's vibrator + speaker. A delegating
+     * [PatternPlayer] (not a direct reference) so [chrome] keeps working after this is reassigned.
      */
     var player: PatternPlayer = PatternPlayer.None
 
@@ -60,6 +73,37 @@ class EditorState {
 
     /** Feel the current pattern on the device, if a real player is wired. */
     fun playCurrent() = player.play(pattern)
+
+    // --- interface feel (UX brief §3.3) -------------------------------------
+
+    /**
+     * Gates and plays the app's own chrome.* feedback (tab switches, snaps, boundaries — never content).
+     * Delegates through the live [player] so reassigning it (e.g. the Android host wiring a real
+     * actuator after construction) doesn't require rebuilding this.
+     */
+    val chrome: ChromePlayer = ChromePlayer(
+        player = PatternPlayer { p -> player.play(p) },
+        hasAmplitudeControl = capabilities.hasAmplitudeControl,
+    )
+
+    var interfaceFeelLevel: InterfaceFeelLevel
+        get() = chrome.level
+        set(value) { chrome.level = value }
+
+    /**
+     * Play the current pattern with the chrome priority latch held for its approximate duration, so
+     * ambient interface feedback never fires over real content. Desktop/no-actuator hosts still get the
+     * latch (harmless — [chrome] would no-op there anyway since nothing calls it mid-playback).
+     */
+    suspend fun playCurrentLatched() {
+        chrome.busy = true
+        try {
+            playCurrent()
+            delay((durationSeconds * 1000).toLong().coerceAtLeast(1))
+        } finally {
+            chrome.busy = false
+        }
+    }
 
     // --- AI assistant ------------------------------------------------------
 

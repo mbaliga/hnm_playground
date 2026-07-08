@@ -21,6 +21,73 @@ import kotlin.test.assertTrue
 class PreviewRenderTest {
 
     @Test
+    fun appShellColdLaunchesIntoFeelTab() {
+        // The Phase 0 accept bar: the app shell's default route is the Feel tab.
+        val width = 420
+        val height = 900
+        val scene = ImageComposeScene(width = width, height = height, density = Density(1f)) {
+            AppShell(state = EditorState())
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/appshell-feel.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "AppShell cold-launch didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersFeelScreenWithEveryBuiltIn() {
+        val scene = ImageComposeScene(width = 420, height = 1400, density = Density(1f)) {
+            dev.hnm.workbench.ui.screens.FeelScreen(state = EditorState(), onOpenEditor = {})
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/screen-feel.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "Feel screen didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersMakeScreen() {
+        val scene = ImageComposeScene(width = 420, height = 900, density = Density(1f)) {
+            dev.hnm.workbench.ui.screens.MakeScreen(state = EditorState(), onOpenEditor = {})
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/screen-make.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "Make screen didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersDeviceScreen() {
+        val scene = ImageComposeScene(width = 420, height = 900, density = Density(1f)) {
+            dev.hnm.workbench.ui.screens.DeviceScreen(state = EditorState())
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/screen-device.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "Device screen didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
     fun rendersEditorToPng() {
         val width = 1180
         val height = 820

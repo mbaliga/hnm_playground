@@ -67,6 +67,12 @@ private val C_ICON      = Color.parseColor("#524F4A")
 private val C_GLYPH_STOP = Color.parseColor("#58554F")
 
 /**
+ * The legacy native-Views feel-test gallery — superseded by the Compose Feel tab (UX brief §3.1 D1),
+ * which now cold-launches from [WorkbenchActivity] and covers this activity's whole job: play every
+ * built-in, self-test, capture a device report. Kept as a manifest-reachable **safety hatch** (not
+ * surfaced as a button in the new tabbed UI) for one release, per the brief; deletion is Phase 7's job,
+ * once the Feel/Device tabs have proven out in practice.
+ *
  * On-device player with the full recorder2 aesthetic — all dark:
  *   • Near-black device shell gradient
  *   • Screen area (#141210) for status bar + pattern list
@@ -75,6 +81,7 @@ private val C_GLYPH_STOP = Color.parseColor("#58554F")
  *   • Battery badge + speaker grille in the chin
  *   • Red (#e22c24) active accent
  */
+@Deprecated("Superseded by the Compose Feel/Device tabs (WorkbenchActivity). Kept as a safety hatch until Phase 7.")
 class MainActivity : Activity() {
 
     private val renderer = DefaultPatternRenderer()
@@ -261,7 +268,7 @@ class MainActivity : Activity() {
         val prims = if (c.supportedPrimitives.isEmpty()) "none" else c.supportedPrimitives.joinToString(",")
         val effects = AndroidHaptics.supportedEffects(vibrator)
         val eff = if (effects.isEmpty()) "none reported (predefined still play via fallback)" else effects.joinToString(",")
-        return "build v0.15 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
+        return "build v0.16 · vibrator ${if (c.hasVibrator) "present" else "ABSENT"}\n" +
             "actuator: ${AndroidHaptics.actuatorLabel(c)}\n" +
             "amplitude ${if (c.hasAmplitudeControl) "yes" else "no"} · primitives: $prims\n" +
             "predefined effects: $eff"

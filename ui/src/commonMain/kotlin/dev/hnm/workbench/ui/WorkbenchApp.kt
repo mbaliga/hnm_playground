@@ -101,10 +101,17 @@ fun WorkbenchWithSplash(
     state: EditorState = remember { EditorState() },
     seed: Int = 0,
     onOpenGallery: (() -> Unit)? = null,
+    onSelfTest: (() -> Unit)? = null,
+    onCaptureDeviceReport: (() -> String)? = null,
 ) {
     var showSplash by remember { mutableStateOf(true) }
     val scene = remember(seed) { dev.hnm.workbench.core.design.SplashMotifs.generate(seed) }
-    WorkbenchApp(state, onOpenGallery)
+    AppShell(
+        state = state,
+        onOpenGallery = onOpenGallery,
+        onSelfTest = onSelfTest,
+        onCaptureDeviceReport = onCaptureDeviceReport,
+    )
     if (showSplash) {
         SplashScreen(
             scene = scene,
