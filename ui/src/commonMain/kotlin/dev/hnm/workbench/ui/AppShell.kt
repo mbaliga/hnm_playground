@@ -50,6 +50,8 @@ fun AppShell(
     state: EditorState,
     onSelfTest: (() -> Unit)? = null,
     onCaptureDeviceReport: (() -> String)? = null,
+    onReplayOnboarding: (() -> Unit)? = null,
+    onReplaySplash: (() -> Unit)? = null,
     reducedMotion: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -146,6 +148,8 @@ fun AppShell(
                                     AppTab.DEVICE -> DeviceScreen(
                                         state = state,
                                         onCaptureDeviceReport = onCaptureDeviceReport,
+                                        onReplayOnboarding = onReplayOnboarding,
+                                        onReplaySplash = onReplaySplash,
                                         contentPadding = padding,
                                     )
                                 }

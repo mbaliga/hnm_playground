@@ -1,6 +1,7 @@
 package dev.hnm.workbench.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,12 +21,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.hnm.workbench.core.playback.InterfaceFeelLevel
 import dev.hnm.workbench.ui.components.GlassSurface
 import dev.hnm.workbench.ui.model.EditorState
+import dev.hnm.workbench.ui.model.WorkspaceMode
 import dev.hnm.workbench.ui.theme.HyleRoles
 
 /**
@@ -38,6 +44,8 @@ fun DeviceScreen(
     state: EditorState,
     modifier: Modifier = Modifier,
     onCaptureDeviceReport: (() -> String)? = null,
+    onReplayOnboarding: (() -> Unit)? = null,
+    onReplaySplash: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     var report by remember { mutableStateOf<String?>(null) }
@@ -96,6 +104,87 @@ fun DeviceScreen(
                 }
             }
         }
+
+        item {
+            Text(
+                "Preferences",
+                color = HyleRoles.Muted,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        item {
+            Column {
+                Text("Interface feel", color = HyleRoles.OnSurface, fontSize = 13.sp)
+                Text(
+                    "How much the app's own chrome (tab switches, snaps, boundaries) buzzes — never your content.",
+                    color = HyleRoles.Muted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InterfaceFeelLevel.entries.forEach { level ->
+                        ChoiceChip(
+                            label = level.name.lowercase().replaceFirstChar { it.uppercase() },
+                            selected = state.interfaceFeelLevel == level,
+                            onClick = { state.interfaceFeelLevel = level },
+                        )
+                    }
+                }
+            }
+        }
+        item {
+            Column {
+                Text("Workspace", color = HyleRoles.OnSurface, fontSize = 13.sp)
+                Text(
+                    "Technical reveals power-user tools like the Editor's Edit-as-JSON sheet.",
+                    color = HyleRoles.Muted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WorkspaceMode.entries.forEach { mode ->
+                        ChoiceChip(
+                            label = mode.name.lowercase().replaceFirstChar { it.uppercase() },
+                            selected = state.workspaceMode == mode,
+                            onClick = { state.workspaceMode = mode },
+                        )
+                    }
+                }
+            }
+        }
+        if (onReplayOnboarding != null || onReplaySplash != null) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onReplayOnboarding != null) {
+                        OutlinedButton(onClick = onReplayOnboarding, modifier = Modifier.weight(1f)) {
+                            Text("Replay onboarding", fontSize = 12.sp)
+                        }
+                    }
+                    if (onReplaySplash != null) {
+                        OutlinedButton(onClick = onReplaySplash, modifier = Modifier.weight(1f)) {
+                            Text("Replay splash", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    val bg = if (selected) HyleRoles.PrimaryAction.copy(alpha = 0.22f) else HyleRoles.Surface
+    val fg = if (selected) HyleRoles.PrimaryAction else HyleRoles.Muted
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg)
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+    ) {
+        Text(label, color = fg, fontSize = 12.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
     }
 }
 

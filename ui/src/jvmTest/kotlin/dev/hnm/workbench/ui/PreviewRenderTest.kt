@@ -129,6 +129,28 @@ class PreviewRenderTest {
     }
 
     @Test
+    fun rendersDeviceScreenWithReplayButtons() {
+        // The "anything pending?" follow-up: interface-feel level / workspace mode chips, plus the
+        // replay-onboarding / replay-splash buttons, only appear when their callbacks are wired.
+        val scene = ImageComposeScene(width = 420, height = 1000, density = Density(1f)) {
+            dev.hnm.workbench.ui.screens.DeviceScreen(
+                state = EditorState(),
+                onReplayOnboarding = {},
+                onReplaySplash = {},
+            )
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/screen-device-replay.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "Device screen with replay buttons didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
     fun rendersDeviceScreenWithSimulatedDeviceHeroCard() {
         // Phase 6: picking a real device (as CapabilityPanel does) should show its resonant
         // frequency/Q on the Device tab's hero card, via the same EditorState.selectedDevice.

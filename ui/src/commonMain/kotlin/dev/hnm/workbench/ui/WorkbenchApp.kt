@@ -131,6 +131,8 @@ fun WorkbenchWithSplash(
             state = state,
             onSelfTest = onSelfTest,
             onCaptureDeviceReport = onCaptureDeviceReport,
+            onReplayOnboarding = { showOnboarding = true },
+            onReplaySplash = { showSplash = true },
             reducedMotion = reducedMotion,
         )
         if (showSplash) {

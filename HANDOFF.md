@@ -8,7 +8,7 @@
 **Repo:** `mbaliga/hnm_playground`
 **Default branch:** `main`
 **Working/feature branch:** `claude/haptics-audio-workbench-lgmpsf`
-**Current app version:** `0.23.0` (versionCode 24) — no in-app diagnostics line (its source,
+**Current app version:** `0.24.0` (versionCode 25) — no in-app diagnostics line (its source,
 `MainActivity`, was deleted in Phase 7; see §0)
 **Latest debug APK:** published to the rolling GitHub Release tag `android-player-debug`
 (filename is version+SHA stamped, e.g. `haptics-player-vX.Y.Z-<shortsha>.apk`).
@@ -55,8 +55,17 @@ All 8 phases have now had at least a pass (Phases 5–7 partially scoped down); 
   feel-test gallery) and its `GrilleView` helper are deleted along with their manifest entry —
   `WorkbenchActivity` is now the app's only activity. Not done: a real TalkBack pass (needs a
   device/human tester), a working platform back-gesture hook (still an inert placeholder), and
-  any Settings/About screen (so interface-feel level, workspace mode, and a splash/onboarding
-  replay all have no UI home yet).
+  any Settings/About screen — though a follow-up pass added a "Preferences" section to the
+  bottom of the Device tab instead (see below), which covers the same ground without a nav
+  model change.
+- **Follow-up after Phase 7:** the Device tab gained a Preferences section — interface-feel
+  level (Off/Subtle/Full) and workspace mode (Vibe/Technical) are now directly changeable there,
+  not just at onboarding time, plus "Replay onboarding" and "Replay splash" buttons. This closes
+  the "no UI home" gap noted above without adding a new tab/route: `DeviceScreen` gained
+  `onReplayOnboarding`/`onReplaySplash` optional callbacks, threaded through `AppShell` and
+  satisfied by `WorkbenchWithSplash` flipping its own `showSplash`/`showOnboarding` state — no
+  Android-side wiring changes were needed since those callbacks are self-contained to
+  `WorkbenchWithSplash`.
 - Acceptance criteria that need a physical device or a human tester (60fps on-device, a TalkBack
   pass, "≤60s to first satisfying pattern" by stopwatch) cannot be machine-verified in this
   environment, consistent with this doc's existing §9 caveat that on-actuator feel is
