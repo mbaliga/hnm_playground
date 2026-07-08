@@ -59,6 +59,7 @@ import dev.hnm.workbench.ui.components.TexturePalette
 import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.components.WalkthroughCard
 import dev.hnm.workbench.ui.model.EditorState
+import dev.hnm.workbench.ui.theme.HyleRoles
 import dev.hnm.workbench.ui.theme.WorkbenchColors
 import dev.hnm.workbench.ui.theme.WorkbenchTheme
 
@@ -290,12 +291,13 @@ private fun KeypadSlab(state: EditorState, onOpenGallery: (() -> Unit)?) {
                 Modifier.fillMaxWidth().height(120.dp),
                 horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                // Big Play key (red glyph, glows red when playable)
+                // Big Play key: violet action glyph (GlyphRec), radium "armed/live" glow when playable —
+                // the D5 split between primary-action color and playback/live-state color.
                 KeypadCell(
                     onClick = { state.playCurrent() },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     domeFraction = 0.80f,
-                    glow = if (state.canPlay) WorkbenchColors.Red else Color.Transparent,
+                    glow = if (state.canPlay) HyleRoles.PlaybackGlow else Color.Transparent,
                     glyph = { GlyphRec() },
                 )
                 // Big Stop key
