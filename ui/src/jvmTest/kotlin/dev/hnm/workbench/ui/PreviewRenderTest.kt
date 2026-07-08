@@ -134,6 +134,26 @@ class PreviewRenderTest {
     }
 
     @Test
+    fun rendersEditorTopBarWithBackArrow() {
+        // Phase 4: when hosted from AppShell's Editor route, WorkbenchApp gets a real back arrow
+        // (onBack != null) in place of the plain recording dot.
+        val width = 1180
+        val height = 820
+        val scene = ImageComposeScene(width = width, height = height, density = Density(1f)) {
+            WorkbenchApp(onBack = {})
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-editor-topbar.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "Editor top bar with back arrow didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
     fun rendersEditorWithLoadedMotionPrimitive() {
         // Exercises the Stage-1 path: a motion primitive loaded into the editor renders end-to-end.
         val state = EditorState().apply { load(MotionPrimitives.toPattern(MotionPrimitive.SETTLE)) }

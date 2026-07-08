@@ -61,6 +61,77 @@ class EditorState {
     var exportKind by mutableStateOf(ExportKind.KOTLIN)
     private var variationSeed = 1
 
+    // --- undo / redo (Phase 4: Editor top bar) ------------------------------
+
+    private val undoStack = mutableStateListOf<HapticAudioPattern>()
+    private val redoStack = mutableStateListOf<HapticAudioPattern>()
+
+    /** A pre-drag snapshot held while a coalesced edit (e.g. a slider drag) is in progress. */
+    private var historyBaseline: HapticAudioPattern? = null
+
+    val canUndo: Boolean get() = undoStack.isNotEmpty()
+    val canRedo: Boolean get() = redoStack.isNotEmpty()
+
+    private fun pushHistory(entry: HapticAudioPattern) {
+        undoStack.add(entry)
+        if (undoStack.size > MAX_HISTORY) undoStack.removeAt(0)
+        redoStack.clear()
+    }
+
+    /**
+     * Sets [pattern], recording undo history. Discrete edits (add/delete/load/rename) checkpoint
+     * immediately; [coalesce] = true folds a run of continuous changes (a slider drag) into a single
+     * undo step — call [commitEdit] when the drag ends (e.g. `onValueChangeFinished`).
+     */
+    private fun setPattern(newPattern: HapticAudioPattern, coalesce: Boolean = false) {
+        if (newPattern == pattern) return
+        if (coalesce) {
+            if (historyBaseline == null) historyBaseline = pattern
+        } else {
+            commitEdit()
+            pushHistory(pattern)
+        }
+        pattern = newPattern
+    }
+
+    /** Ends an in-progress coalesced drag, turning it into one undo step. No-op if nothing pending. */
+    fun commitEdit() {
+        val baseline = historyBaseline ?: return
+        historyBaseline = null
+        if (baseline != pattern) pushHistory(baseline)
+    }
+
+    fun undo() {
+        commitEdit()
+        val previous = undoStack.removeLastOrNull() ?: return
+        redoStack.add(pattern)
+        pattern = previous
+        clampSelectionToCurrentPattern()
+    }
+
+    fun redo() {
+        val next = redoStack.removeLastOrNull() ?: return
+        undoStack.add(pattern)
+        pattern = next
+        clampSelectionToCurrentPattern()
+    }
+
+    /**
+     * Keeps the current selection where it is across undo/redo when the index is still valid — e.g.
+     * undoing a slider drag should keep the same event selected, not jump the inspector back to event 0.
+     */
+    private fun clampSelectionToCurrentPattern() {
+        selectedEventIndex = selectedEventIndex?.takeIf { it in hapticEvents.indices }
+        selectedAudioEventIndex = selectedAudioEventIndex?.takeIf { it in audioEvents.indices }
+    }
+
+    /** Renames the current pattern in place (Editor top-bar rename). Undoable like any other edit. */
+    fun renamePattern(newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isBlank() || trimmed == pattern.name) return
+        setPattern(pattern.copy(name = trimmed))
+    }
+
     /**
      * How the current pattern gets felt. Defaults to [PatternPlayer.None] (desktop has no actuator);
      * the Android host injects a real player wired to the device's vibrator + speaker. A delegating
@@ -240,14 +311,18 @@ class EditorState {
 
     // --- haptic event edits ------------------------------------------------
 
-    /** Replace the selected haptic event via [transform]. No-op if nothing selected. */
+    /**
+     * Replace the selected haptic event via [transform]. No-op if nothing selected. Callers are all
+     * slider-driven (intensity/sharpness/time/duration/envelope), so edits coalesce into one undo step
+     * per drag — see [commitEdit].
+     */
     fun updateSelected(transform: (HapticEvent) -> HapticEvent) {
         val idx = selectedEventIndex ?: return
         val track = hapticTrack ?: return
         val events = track.events.toMutableList()
         if (idx !in events.indices) return
         events[idx] = transform(events[idx])
-        replaceHapticTrack(track.copy(events = events))
+        replaceHapticTrack(track.copy(events = events), coalesce = true)
     }
 
     fun setSelectedIntensity(value: Double) = updateSelected { e ->
@@ -372,7 +447,8 @@ class EditorState {
         }
     }
 
-    fun setSelectedAudioWaveform(value: Waveform) = updateSelectedAudio { ev ->
+    // A discrete pick (dropdown), not a drag — checkpoint immediately rather than coalescing.
+    fun setSelectedAudioWaveform(value: Waveform) = updateSelectedAudio(coalesce = false) { ev ->
         when (ev) {
             is OscEvent -> ev.copy(waveform = value)
             else -> ev
@@ -387,31 +463,31 @@ class EditorState {
         selectAudio(null)
     }
 
-    private fun updateSelectedAudio(transform: (AudioEvent) -> AudioEvent) {
+    private fun updateSelectedAudio(coalesce: Boolean = true, transform: (AudioEvent) -> AudioEvent) {
         val idx = selectedAudioEventIndex ?: return
         val track = audioTrack ?: return
         val events = track.events.toMutableList()
         if (idx !in events.indices) return
         events[idx] = transform(events[idx])
-        replaceAudioTrack(track.copy(events = events))
+        replaceAudioTrack(track.copy(events = events), coalesce = coalesce)
     }
 
     // --- pattern-level operations ------------------------------------------
 
     fun mutate() {
-        pattern = Variations.mutate(pattern, amount = 0.2, seed = variationSeed++)
+        setPattern(Variations.mutate(pattern, amount = 0.2, seed = variationSeed++))
         select(0)
     }
 
     fun reset() {
-        pattern = BuiltInPatterns.CONFIRM
+        setPattern(BuiltInPatterns.CONFIRM)
         variationSeed = 1
         select(0)
     }
 
     /** Replace the whole pattern (e.g. when loading a motion primitive or library entry). */
     fun load(newPattern: HapticAudioPattern) {
-        pattern = newPattern
+        setPattern(newPattern)
         variationSeed = 1
         select(if (hapticEventsOf(newPattern).isNotEmpty()) 0 else null)
         selectedAudioEventIndex = null
@@ -436,17 +512,23 @@ class EditorState {
     private fun hapticEventsOf(p: HapticAudioPattern) =
         p.tracks.filterIsInstance<HapticTrack>().firstOrNull()?.events ?: emptyList()
 
-    private fun replaceHapticTrack(updated: HapticTrack) {
+    private fun replaceHapticTrack(updated: HapticTrack, coalesce: Boolean = false) {
         val tracks = pattern.tracks.map { if (it.id == updated.id) updated else it }
-        pattern = pattern.copy(
-            tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated,
+        setPattern(
+            pattern.copy(tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated),
+            coalesce = coalesce,
         )
     }
 
-    private fun replaceAudioTrack(updated: AudioTrack) {
+    private fun replaceAudioTrack(updated: AudioTrack, coalesce: Boolean = false) {
         val tracks = pattern.tracks.map { if (it.id == updated.id) updated else it }
-        pattern = pattern.copy(
-            tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated,
+        setPattern(
+            pattern.copy(tracks = if (tracks.any { it.id == updated.id }) tracks else tracks + updated),
+            coalesce = coalesce,
         )
+    }
+
+    private companion object {
+        const val MAX_HISTORY = 50
     }
 }

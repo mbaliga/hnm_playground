@@ -8,9 +8,37 @@
 **Repo:** `mbaliga/hnm_playground`
 **Default branch:** `main`
 **Working/feature branch:** `claude/haptics-audio-workbench-lgmpsf`
-**Current app version:** `0.15.0` (versionCode 16) — in-app diagnostics line reads `build v0.15`
+**Current app version:** `0.20.0` (versionCode 21) — in-app diagnostics line reads `build v0.20`
 **Latest debug APK:** published to the rolling GitHub Release tag `android-player-debug`
 (filename is version+SHA stamped, e.g. `haptics-player-vX.Y.Z-<shortsha>.apk`).
+
+---
+
+## 0. UX rebuild status (v1.1 brief, Phases 0–4 of 8)
+
+Since `v0.15.0` the app has been rebuilt around a new IA and a Hyle-derived design system,
+per a separate "UX Build Brief v1.1" (D1–D6 decisions, per-screen specs, an 8-phase plan).
+Phases 0–4 are done; **see [STATE.md](STATE.md) for the up-to-date one-paragraph summary of
+each**. In short:
+
+- `AppShell` replaces the old single-activity gallery flow: three tabs (**Feel** home / **Make**
+  / **Device**) plus a full-screen **Editor** route entered from any tab.
+- Hyle Design System (`mbaliga/Hyle-Design-System`) turned out to ship **tokens only** — no
+  reusable Compose Multiplatform visuals (its glass/motion/grid demos are AGSL `RuntimeShader`
+  code, Android-API-33+-only, living in a throwaway demo app, not the library module). So
+  `ui/.../theme/HyleTokens.kt` / `HyleProvenance.kt` are **vendored verbatim** from Hyle's token
+  source; the dot-grid/glass/glow widgets in `ui/.../components/HyleWidgets.kt` are **original,
+  hand-built** Multiplatform-safe implementations informed by Hyle's values, not a live dependency
+  or a literal port of its shaders.
+- The Editor (`WorkbenchApp`) is still the pre-existing dense panel layout — Phase 4 scoped down
+  to giving it a real top bar (back arrow, tap-to-rename, undo/redo) rather than the brief's full
+  ask (pinch-zoom timeline, drag-snap, long-press-add, scrub-to-feel). That gesture-level rewrite
+  is explicitly deferred, not silently dropped — see `STATE.md`'s Next steps.
+- Phases 5–7 (technical workspace, onboarding + device hero card, polish pass) are not started.
+- Acceptance criteria that need a physical device or a human tester (60fps on-device, a TalkBack
+  pass, "≤60s to first satisfying pattern" by stopwatch) cannot be machine-verified in this
+  environment, consistent with this doc's existing §9 caveat that on-actuator feel is
+  owner-verified only.
 
 ---
 
@@ -300,8 +328,10 @@ loads the result, shows the explanation, and auto-plays on a wired actuator. UI:
    ring-downs on real LRA hardware; tune `HapticMapping` (sharpness→frequency, intensity→amp)
    against measured output.
 5. **F-Droid / Play internal-testing distribution** beyond the debug-APK release.
-6. **"Skip intro after first run"** preference for the splash.
+6. ~~"Skip intro after first run" preference for the splash~~ — done (`SplashPreferences`,
+   `ui/.../splash/SplashPreferences.kt`): shows for the first 3 launches, then skips by default.
 7. Optionally, **import more formats** (Interhaptics `.haps`, MPEG-I `.hjif`).
+8. **UX Build Brief Phases 5–7** — see §0 above and `STATE.md`'s Next steps.
 
 ---
 

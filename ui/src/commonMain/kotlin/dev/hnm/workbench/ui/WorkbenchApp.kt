@@ -2,6 +2,7 @@ package dev.hnm.workbench.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,8 +20,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,6 +82,7 @@ import dev.hnm.workbench.ui.theme.WorkbenchTheme
 fun WorkbenchApp(
     state: EditorState = remember { EditorState() },
     onOpenGallery: (() -> Unit)? = null,
+    onBack: (() -> Unit)? = null,
 ) {
     WorkbenchTheme {
         // Pitch-black page (recorder2 body background:#000)
@@ -85,8 +90,8 @@ fun WorkbenchApp(
             BoxWithConstraints(Modifier.fillMaxSize().padding(16.dp)) {
                 val narrow = maxWidth < 720.dp
                 DeviceShell {
-                    if (narrow) NarrowLayout(state, onOpenGallery)
-                    else WideLayout(state, onOpenGallery)
+                    if (narrow) NarrowLayout(state, onOpenGallery, onBack)
+                    else WideLayout(state, onOpenGallery, onBack)
                 }
             }
         }
@@ -130,14 +135,14 @@ fun WorkbenchWithSplash(
 
 /** Phone: one scrolling column inside the screen, transport slab pinned in the flow. */
 @Composable
-private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
+private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?, onBack: (() -> Unit)?) {
     val scroll = rememberScrollState()
     ScreenPanel(Modifier.fillMaxSize()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(scroll).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            StatusBar(state)
+            EditorTopBar(state, onBack)
             WalkthroughCard()
             AssistantPanel(state)
             HorizontalDivider(color = WorkbenchColors.Grid)
@@ -165,7 +170,7 @@ private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
 
 /** Desktop: two columns inside one dark screen. */
 @Composable
-private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
+private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?, onBack: (() -> Unit)?) {
     ScreenPanel(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             val leftScroll = rememberScrollState()
@@ -173,7 +178,7 @@ private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?) {
                 Modifier.weight(1.4f).verticalScroll(leftScroll),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                StatusBar(state)
+                EditorTopBar(state, onBack)
                 WalkthroughCard()
                 AssistantPanel(state)
                 HorizontalDivider(color = WorkbenchColors.Grid)
@@ -248,28 +253,75 @@ private fun ScreenPanel(modifier: Modifier = Modifier, content: @Composable () -
     }
 }
 
-/** Status bar (recorder2 .statusbar): red dot + pattern name + counts, all in ink-dim. */
+/**
+ * Editor top bar (recorder2 .statusbar, extended for Phase 4): back arrow (when hosted inside
+ * [dev.hnm.workbench.ui.AppShell]'s Editor route) or the recording dot otherwise, the pattern name
+ * (tap to rename), event counts, and undo/redo.
+ */
 @Composable
-private fun StatusBar(state: EditorState) {
+private fun EditorTopBar(state: EditorState, onBack: (() -> Unit)?) {
+    var renaming by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        RecordingDot(active = true, modifier = Modifier.size(8.dp))
+        if (onBack != null) {
+            Text(
+                "←",
+                color = WorkbenchColors.Icon,
+                fontSize = 18.sp,
+                modifier = Modifier.clickable(onClick = onBack).padding(end = 2.dp),
+            )
+        } else {
+            RecordingDot(active = true, modifier = Modifier.size(8.dp))
+        }
         Text(
             state.pattern.name.uppercase(),
             color = WorkbenchColors.InkDim,
             fontSize = 12.sp,
             letterSpacing = 0.12.sp,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).clickable { renaming = true },
         )
         Text(
             "${state.hapticEvents.size}H · ${state.audioEvents.size}A",
             color = WorkbenchColors.InkDim,
             fontSize = 12.sp,
         )
+        Text(
+            "↶",
+            color = if (state.canUndo) WorkbenchColors.Icon else WorkbenchColors.Muted,
+            fontSize = 16.sp,
+            modifier = Modifier.clickable(enabled = state.canUndo) { state.undo() },
+        )
+        Text(
+            "↷",
+            color = if (state.canRedo) WorkbenchColors.Icon else WorkbenchColors.Muted,
+            fontSize = 16.sp,
+            modifier = Modifier.clickable(enabled = state.canRedo) { state.redo() },
+        )
     }
+    if (renaming) {
+        RenamePatternDialog(state = state, onDismiss = { renaming = false })
+    }
+}
+
+@Composable
+private fun RenamePatternDialog(state: EditorState, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(state.pattern.name) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rename pattern") },
+        text = {
+            OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true)
+        },
+        confirmButton = {
+            TextButton(onClick = { state.renamePattern(text); onDismiss() }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
 }
 
 /** Chin row (recorder2 .chinrow): dark battery pill + speaker grille. */

@@ -30,9 +30,9 @@ import dev.hnm.workbench.ui.theme.HyleRoles
 
 /**
  * The single-activity shell (UX brief §3.1/§3.2 D1/D2): three tabs — Feel (home), Make, Device — plus
- * the full-screen Editor route, entered from a tab and always returning to it. [WorkbenchApp] (the
- * existing panel-based editor, unchanged) is what the Editor route hosts; this shell doesn't touch its
- * internals — that redesign is Phase 4's job.
+ * the full-screen Editor route, entered from a tab and always returning to it. [WorkbenchApp] is what
+ * the Editor route hosts, now with a real top bar (back arrow, rename, undo/redo — Phase 4); the
+ * dense panel body underneath is otherwise unchanged.
  */
 @Composable
 fun AppShell(
@@ -67,10 +67,11 @@ fun AppShell(
 
     when (val r = route) {
         is AppRoute.Editor -> {
-            // Unchanged existing editor; Gallery button (if wired) still reaches the legacy activity.
-            WorkbenchApp(state = state, onOpenGallery = onOpenGallery)
-            // A minimal way back until Phase 4 gives the Editor its own top bar with a real back arrow:
-            // the bottom nav simply isn't shown while editing, so route state itself is the back target.
+            // Gallery button (if wired) still reaches the legacy activity. The Editor's own top bar
+            // (WorkbenchApp's EditorTopBar) supplies the real back arrow via onBack.
+            WorkbenchApp(state = state, onOpenGallery = onOpenGallery, onBack = ::closeEditor)
+            // Platform back-gesture hook (Android predictable back / Esc on desktop) — still a no-op
+            // marker; the top bar's back arrow is the primary path for now.
             BackHandlerHook(onBack = ::closeEditor)
         }
         is AppRoute.MakeSource -> {
@@ -163,8 +164,9 @@ private fun tabColors() = NavigationBarItemDefaults.colors(
 
 /**
  * Placeholder for a real platform back-gesture hook (Android predictable back / Esc on desktop).
- * Phase 4 gives the Editor a proper top bar with an explicit back arrow; until then this is a no-op
- * marker so the intent is visible in the tree rather than silently absent.
+ * The Editor's top bar already has a working back arrow ([onBack] wired through); this hook is for
+ * the OS-level gesture/key, not yet wired to any platform API — a no-op marker so the intent is
+ * visible in the tree rather than silently absent.
  */
 @Composable
 private fun BackHandlerHook(onBack: () -> Unit) {
