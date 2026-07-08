@@ -87,6 +87,10 @@ fun AppShell(
                             modifier = Modifier.fillMaxSize(),
                             onOpenEditor = { openEditor(AppTab.FEEL) },
                             onSelfTest = onSelfTest,
+                            onJumpToMakeWithPrompt = { prompt ->
+                                state.lastPrompt = prompt
+                                switchTab(AppTab.MAKE)
+                            },
                             contentPadding = padding,
                         )
                         AppTab.MAKE -> MakeScreen(
