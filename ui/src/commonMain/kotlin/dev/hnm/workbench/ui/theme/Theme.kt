@@ -3,7 +3,18 @@ package dev.hnm.workbench.ui.theme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+
+/**
+ * Whether the host has asked for reduced motion (UX brief's accessibility section). Read by anything
+ * that runs an indefinite animation — [dev.hnm.workbench.ui.components.provenanceGlow]'s breathing
+ * pulse, [AppShell]'s tab cross-fade — so those are gated in one place rather than threading a
+ * `reducedMotion: Boolean` parameter through every composable in between. Provided at the top of the
+ * tree by [dev.hnm.workbench.ui.WorkbenchWithSplash]; defaults to `false` for callers that construct
+ * [dev.hnm.workbench.ui.AppShell]/[dev.hnm.workbench.ui.WorkbenchApp] directly (tests, previews).
+ */
+val LocalReducedMotion = compositionLocalOf { false }
 
 /**
  * Compose [Color]s for every [HyleTokens.Color] value, so call sites never juggle raw ARGB Longs.

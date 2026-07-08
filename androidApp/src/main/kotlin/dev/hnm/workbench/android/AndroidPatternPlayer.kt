@@ -10,8 +10,7 @@ import dev.hnm.workbench.core.playback.PatternPlayer
 /**
  * The real, on-device [PatternPlayer] handed to the workbench so its Play button *feels* a pattern.
  * It renders both the haptic schedule and the audio stream from the same `core` IR, then triggers
- * them together — exactly what the standalone player [MainActivity] does, factored out so the Compose
- * workbench can share it.
+ * them together.
  */
 class AndroidPatternPlayer(
     private val vibrator: Vibrator,

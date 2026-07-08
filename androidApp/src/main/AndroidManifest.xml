@@ -20,11 +20,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- The flat feel-test gallery, reachable from the workbench's "Gallery" button. -->
-        <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:label="Feel-test gallery" />
     </application>
 </manifest>

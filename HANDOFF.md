@@ -8,18 +8,19 @@
 **Repo:** `mbaliga/hnm_playground`
 **Default branch:** `main`
 **Working/feature branch:** `claude/haptics-audio-workbench-lgmpsf`
-**Current app version:** `0.22.0` (versionCode 23) — in-app diagnostics line reads `build v0.22`
+**Current app version:** `0.23.0` (versionCode 24) — no in-app diagnostics line (its source,
+`MainActivity`, was deleted in Phase 7; see §0)
 **Latest debug APK:** published to the rolling GitHub Release tag `android-player-debug`
 (filename is version+SHA stamped, e.g. `haptics-player-vX.Y.Z-<shortsha>.apk`).
 
 ---
 
-## 0. UX rebuild status (v1.1 brief, Phases 0–6 of 8)
+## 0. UX rebuild status (v1.1 brief, Phases 0–7 of 8)
 
 Since `v0.15.0` the app has been rebuilt around a new IA and a Hyle-derived design system,
 per a separate "UX Build Brief v1.1" (D1–D6 decisions, per-screen specs, an 8-phase plan).
-Phases 0–6 are done (Phases 5–6 partially scoped down); **see [STATE.md](STATE.md) for the
-up-to-date one-paragraph summary of each**. In short:
+All 8 phases have now had at least a pass (Phases 5–7 partially scoped down); **see
+[STATE.md](STATE.md) for the up-to-date one-paragraph summary of each**. In short:
 
 - `AppShell` replaces the old single-activity gallery flow: three tabs (**Feel** home / **Make**
   / **Device**) plus a full-screen **Editor** route entered from any tab.
@@ -47,7 +48,15 @@ up-to-date one-paragraph summary of each**. In short:
   invisible to the Device tab. Onboarding's last beat is interactive: it sets `WorkspaceMode`
   (Vibe/Technical), which now gates the Editor's Edit-as-JSON button (Phase 5's tool is hidden by
   default in Vibe mode). Not done: a "replay onboarding" entry point once it's been completed once.
-- Phase 7 (polish pass) is not started.
+- Phase 7 (polish, partial): tab-switch cross-fades using Hyle's motion duration tokens; a
+  `LocalReducedMotion` CompositionLocal gates both that cross-fade and every `provenanceGlow`
+  breathing-pulse animation (holds a static mid-alpha glow instead); the Feel/Make/Device tabs
+  cap and center at 640dp on wide desktop windows; the legacy `MainActivity` (native-Views
+  feel-test gallery) and its `GrilleView` helper are deleted along with their manifest entry —
+  `WorkbenchActivity` is now the app's only activity. Not done: a real TalkBack pass (needs a
+  device/human tester), a working platform back-gesture hook (still an inert placeholder), and
+  any Settings/About screen (so interface-feel level, workspace mode, and a splash/onboarding
+  replay all have no UI home yet).
 - Acceptance criteria that need a physical device or a human tester (60fps on-device, a TalkBack
   pass, "≤60s to first satisfying pattern" by stopwatch) cannot be machine-verified in this
   environment, consistent with this doc's existing §9 caveat that on-actuator feel is
@@ -217,19 +226,22 @@ library, assistant, import). Panels: `TimelineView`, `InspectorPanel`, `Envelope
 `KeypadCell`, `SpeakerGrille`, `BatteryBadge`, `ScanlineOverlay`, `RecordingDot`, playhead
 helpers), `SplashScreen.kt`.
 
-`WorkbenchApp(state, onOpenGallery)` = the editor (responsive: narrow single column <720dp,
-else two columns). **`WorkbenchWithSplash(state, seed, onOpenGallery)`** = the app with the
-splash overlaid on first launch (this is what real entry points use; `WorkbenchApp` stays
-splash-free so render tests are stable).
+`WorkbenchApp(state, onBack)` = the dense panel editor (responsive: narrow single column
+<720dp, else two columns), now with a real top bar (back arrow, tap-to-rename, undo/redo,
+technical-workspace-gated Edit-as-JSON — Phases 4/5). It's hosted by **`AppShell`**
+(`ui/.../AppShell.kt`), which is the actual UI entry point since Phase 0: three tabs — Feel
+(`FeelScreen`, home), Make (`MakeScreen` + five `MakeSourceScreen` mini-flows), Device
+(`DeviceScreen`) — plus the full-screen Editor route reached from any tab.
+**`WorkbenchWithSplash(state, seed, ...)`** wraps `AppShell` with the splash overlay on first
+launch and, once that finishes, the six-beat `OnboardingScreen` if it hasn't run yet
+(`WorkbenchApp` itself stays splash/onboarding-free so render tests are stable).
 
 ### Android app (`androidApp/.../`)
-- **`WorkbenchActivity`** — the **LAUNCHER** activity. Hosts the Compose `WorkbenchWithSplash`,
-  wires the Play button to the real actuator + speaker via `AndroidPatternPlayer`, initializes
-  the target profile from what the device actually reports. "Gallery" button → `MainActivity`.
-- `MainActivity` — the **flat feel-test gallery** (native Views, not Compose). Lists the whole
-  vocabulary with per-row Play, a vibration self-test, honest diagnostics, and a **"Capture
-  device capability report"** button (probes the device → copies `DeviceProfile` JSON to
-  contribute to the DB). Also shows the splash on its own launch.
+- **`WorkbenchActivity`** — the **only activity** (the legacy native-Views gallery,
+  `MainActivity`, was deleted in Phase 7). Hosts the Compose `WorkbenchWithSplash`, wires the
+  Play button to the real actuator + speaker via `AndroidPatternPlayer`, initializes the target
+  profile from what the device actually reports, and injects `AndroidSplashPreferences`/
+  `AndroidOnboardingPreferences`.
 - `AndroidHaptics.kt` — bridges `core`'s schedule to the real `Vibrator`; picks the best
   rendering (composition primitives → predefined effects → stitched waveform). `probe()` reads
   amplitude/primitive/effect support; **`probeProfile()`** additionally reads resonant freq + Q
@@ -238,16 +250,16 @@ splash-free so render tests are stable).
   behind a vendor SDK)".
 - `AndroidPatternPlayer.kt` — the `PatternPlayer` wired into `EditorState.player`.
 - `AudioPlayer.kt` — plays the rendered audio stream via AudioTrack.
-- `GrilleView.kt` — native Canvas dot-grid grille.
-- `SplashView.kt` — native Canvas splash (see §7).
 
 ---
 
 ## 6. Visual design system — "recorder2" aesthetic
 
-Ported faithfully from a supplied HTML mock (`recorder2.html`, the dark revision). All-dark,
-premium, minimal, red accent. Colors live in `ui/.../theme/Theme.kt` (`WorkbenchColors`) and
-are mirrored as constants in the Android `MainActivity`.
+Ported faithfully from a supplied HTML mock (`recorder2.html`, the dark revision) for the Editor
+route specifically. All-dark, premium, minimal. Colors live in `ui/.../theme/Theme.kt`
+(`WorkbenchColors`, now a compatibility alias over `HyleRoles` — see §0/Phase 0). The Feel/Make/
+Device tabs use the Hyle-derived `HyleRoles`/`HyleColors` directly (violet primary action,
+radium/cyan provenance glow) rather than this recorder2 palette.
 
 | Token | Hex | Use |
 |-------|-----|-----|
@@ -275,21 +287,23 @@ The key idea: the animation, audio, and haptics are **all generated from one sha
 `SplashScene`**, so they're coincident by construction. A seed picks one of four motifs per
 launch.
 
-- `core/design/SplashScene.kt` — `SplashVisual { RIPPLE, BLOOM, SWEEP, SPARK }`,
-  `SplashScene(title, visual, pattern, beats, durationSeconds, seed)`, and `SplashMotifs`
-  (`generate(seed)` deterministic; `all()` = one scene per visual). Each motif is a short IR
-  "sting" (~1.8–2.0s); `beats` are the haptic event times the visual animates against.
+- `core/design/SplashScene.kt` — `SplashVisual { RIPPLE, BLOOM, SWEEP, SPARK, LATTICE }`,
+  `SplashScene(title, visual, pattern, beats, durationSeconds, seed, paletteMix, voice)`, and
+  `SplashMotifs` (`generate(seed)` deterministic — also seeds a palette drift toward Hyle's
+  cloud-cyan hue and a material-derived voice; `all()` = one scene per visual). Each motif is a
+  short IR "sting" (~1.8–2.0s); `beats` are the haptic event times the visual animates against.
 - `core/design/SplashGeometry.kt` — **pure, tested visual math** (expanding rings, blooming
-  mirrored bars, sweeping playhead + ticks, bursting/decaying sparks, master fade in/out).
-  Both platforms call this so the animation logic lives in one place.
+  mirrored bars, sweeping playhead + ticks, bursting/decaying sparks, a diamond-burst lattice,
+  master fade in/out). Both platforms call this so the animation logic lives in one place.
 - `ui/components/SplashScreen.kt` — Compose renderer; `fixedTimeSec` draws a deterministic
-  frame for tests. `WorkbenchWithSplash` overlays it on first launch and dismisses when done.
-- `androidApp/SplashView.kt` — native Canvas + `Choreographer` loop; `begin()` fires the
-  coincident haptics+audio via the existing player path; tap-to-skip.
+  frame for tests; `reducedMotion` shows a static text mark instead of animating.
+  `WorkbenchWithSplash` overlays it on first launch (first 3 launches by default, via
+  `SplashPreferences`) and dismisses when done, then shows onboarding if it hasn't run yet.
 
 **Where the splash appears:** `WorkbenchActivity` (Android launcher, plays on the real
-actuator), `MainActivity` (gallery), and the desktop `Main.kt`. `WorkbenchApp` itself stays
-splash-free so headless editor render tests are unaffected.
+actuator) and the desktop `Main.kt`. The old native Android `SplashView` (Canvas +
+`Choreographer`) was retired in Phase 1 in favor of this one shared Compose splash.
+`WorkbenchApp` itself stays splash-free so headless editor render tests are unaffected.
 
 ---
 
@@ -381,9 +395,9 @@ is the parametric layer; the remaining work is the Android API-36 render.
   cache-served). Triggered by pushes touching `androidApp/**`, `core/**`, `ui/**`, `gradle/**`,
   `*.gradle.kts`, or the workflow itself.
 
-**Versioning:** bump `versionCode` + `versionName` in `androidApp/build.gradle.kts` **and** the
-`build vX.Y` string in `MainActivity.diagnostics()` together on every user-facing change, so the
-installed app self-identifies.
+**Versioning:** bump `versionCode` + `versionName` in `androidApp/build.gradle.kts` on every
+user-facing change (there's no separate in-app diagnostics string to keep in sync since Phase 7
+deleted the legacy `MainActivity` that used to carry one).
 
 **Git workflow (important):** develop on `claude/haptics-audio-workbench-lgmpsf`; push with
 `git push -u origin <branch>`; open a **draft PR** if none is open. **PR #1 has already been
@@ -411,21 +425,24 @@ trailers used throughout this repo. Do **not** put the model identifier in any c
 | Design vocabulary | `core/.../design/{MotionPrimitives,TextureField,ModalSynth,ParameterNavigator,RhythmCapture,Variations}.kt` |
 | Splash (core) | `core/.../design/SplashScene.kt`, `SplashGeometry.kt` |
 | Editor state | `ui/.../model/EditorState.kt` |
-| App shell / splash wire | `ui/.../WorkbenchApp.kt` (`WorkbenchApp` + `WorkbenchWithSplash`) |
-| Theme / widgets | `ui/.../theme/Theme.kt`, `ui/.../components/RecorderWidgets.kt`, `SplashScreen.kt` |
+| App shell / tabs / Editor route | `ui/.../AppShell.kt`, `ui/.../WorkbenchApp.kt` (`WorkbenchApp` + `WorkbenchWithSplash`) |
+| Feel / Make / Device screens | `ui/.../screens/FeelScreen.kt`, `MakeScreen.kt`, `MakeSourceScreen.kt`, `DeviceScreen.kt` |
+| Onboarding | `ui/.../onboarding/OnboardingScreen.kt`, `OnboardingPreferences.kt` |
+| Theme / widgets | `ui/.../theme/Theme.kt`, `HyleTokens.kt`, `HyleProvenance.kt`, `ui/.../components/HyleWidgets.kt`, `RecorderWidgets.kt`, `SplashScreen.kt` |
 | Device simulator UI | `ui/.../components/CapabilityPanel.kt` |
 | AHAP import UI | `ui/.../components/ImportPanel.kt` |
 | Desktop entry | `ui/src/jvmMain/.../Main.kt` |
-| Android launcher | `androidApp/.../WorkbenchActivity.kt` |
-| Android gallery/player | `androidApp/.../MainActivity.kt` |
+| Android launcher (only activity) | `androidApp/.../WorkbenchActivity.kt` |
 | Android haptics bridge | `androidApp/.../AndroidHaptics.kt`, `AndroidPatternPlayer.kt`, `AudioPlayer.kt` |
-| Android splash | `androidApp/.../SplashView.kt` |
-| Tests (core) | `core/src/commonTest/.../*Test.kt` (15 files) |
+| Android splash/onboarding prefs | `androidApp/.../AndroidSplashPreferences.kt`, `AndroidOnboardingPreferences.kt` |
+| Tests (core) | `core/src/commonTest/.../*Test.kt` |
 | Tests (render) | `ui/src/jvmTest/.../PreviewRenderTest.kt` |
 | CI | `.github/workflows/ci.yml`, `android.yml` |
 | Deeper docs | `docs/ANDROID.md`, `docs/AUTHORING-INTERFACES.md`, `docs/MODULES.md`, `README.md` |
 
 ---
 
-*Handoff generated at v0.15.0. When you make the next change, bump the version, keep the
-`build vX` diagnostics string in sync, and update this file's "current state" + roadmap.*
+*Handoff generated at v0.15.0, refreshed through v0.23.0. The legacy `MainActivity` that used to carry
+an in-app "build vX" diagnostics string was deleted in Phase 7 (§9) — there's no equivalent string left
+to keep in sync, just `versionCode`/`versionName` in `androidApp/build.gradle.kts`. When you make the
+next change, bump the version and update this file's "current state" + roadmap.*

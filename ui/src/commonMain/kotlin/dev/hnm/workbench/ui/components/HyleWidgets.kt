@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import dev.hnm.workbench.ui.theme.Finish
 import dev.hnm.workbench.ui.theme.HyleColors
 import dev.hnm.workbench.ui.theme.HyleTokens
+import dev.hnm.workbench.ui.theme.LocalReducedMotion
 import dev.hnm.workbench.ui.theme.Provenance
 import dev.hnm.workbench.ui.theme.Pulse
 
@@ -103,16 +104,25 @@ fun Modifier.provenanceGlow(provenance: Provenance, shape: Shape = RectangleShap
 // a Node isn't warranted.
 private fun RadiantGlowElement(finish: Finish.Radiant, shape: Shape): Modifier =
     Modifier.composed {
-        val transition = rememberInfiniteTransition(label = "provenanceGlow")
-        val alphaPct by transition.animateFloat(
-            initialValue = finish.pulse.minAlphaPct.toFloat(),
-            targetValue = finish.pulse.maxAlphaPct.toFloat(),
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = finish.pulse.periodMs, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "provenanceGlowAlpha",
-        )
+        val reducedMotion = LocalReducedMotion.current
+        // Reduced motion: hold a static mid-alpha glow instead of an indefinite breathing pulse — the
+        // "this is live/on-device" cue survives, the animation doesn't.
+        val midAlpha = (finish.pulse.minAlphaPct + finish.pulse.maxAlphaPct) / 2f
+        val alphaPct = if (reducedMotion) {
+            midAlpha
+        } else {
+            val transition = rememberInfiniteTransition(label = "provenanceGlow")
+            val animated by transition.animateFloat(
+                initialValue = finish.pulse.minAlphaPct.toFloat(),
+                targetValue = finish.pulse.maxAlphaPct.toFloat(),
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = finish.pulse.periodMs, easing = LinearEasing),
+                    repeatMode = RepeatMode.Reverse,
+                ),
+                label = "provenanceGlowAlpha",
+            )
+            animated
+        }
         val tint = Color(finish.tint)
         drawBehind {
             drawRect(

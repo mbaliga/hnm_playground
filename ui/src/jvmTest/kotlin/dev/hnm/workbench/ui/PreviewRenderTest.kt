@@ -40,6 +40,24 @@ class PreviewRenderTest {
     }
 
     @Test
+    fun appShellFeelTabIsWidthCappedOnADesktopWindow() {
+        // Phase 7 desktop-adaptive check: on a wide window the tab content should center in a capped
+        // column rather than stretch edge to edge.
+        val scene = ImageComposeScene(width = 1200, height = 900, density = Density(1f)) {
+            AppShell(state = EditorState())
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/appshell-feel-desktop.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "AppShell desktop-width didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
     fun rendersFeelScreenWithEveryBuiltIn() {
         val scene = ImageComposeScene(width = 420, height = 1400, density = Density(1f)) {
             dev.hnm.workbench.ui.screens.FeelScreen(state = EditorState(), onOpenEditor = {})

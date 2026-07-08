@@ -1,6 +1,5 @@
 package dev.hnm.workbench.android
 
-import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,9 +17,9 @@ import dev.hnm.workbench.ui.model.EditorState
  * + the Editor route), wiring Play, the interface-feel chrome, self-test, and the device-report capture
  * to the real actuator + speaker via [AndroidPatternPlayer]/[AndroidHaptics]. The editor's target profile
  * is initialized from what this device actually reports, so the on-screen schedule matches what gets
- * played. [onOpenGallery] still reaches the legacy native-Views gallery ([MainActivity]) — kept as a
- * safety-hatch hook per the brief, not surfaced as a button in the new tabbed UI (the Feel tab replaces
- * its purpose).
+ * played. The legacy native-Views gallery (`MainActivity`) that used to be reachable from here is gone
+ * (Phase 7) — the Feel tab has fully covered its job (play every built-in, self-test, capture a device
+ * report) since Phase 2.
  */
 class WorkbenchActivity : ComponentActivity() {
 
@@ -58,7 +57,6 @@ class WorkbenchActivity : ComponentActivity() {
             WorkbenchWithSplash(
                 state = state,
                 seed = splashSeed,
-                onOpenGallery = { startActivity(Intent(this, MainActivity::class.java)) },
                 onSelfTest = { AndroidHaptics.selfTest(vibrator, handler) { toast(it) } },
                 onCaptureDeviceReport = {
                     DeviceDatabase(listOf(AndroidHaptics.probeProfile(vibrator))).toJson()

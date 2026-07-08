@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +72,7 @@ import dev.hnm.workbench.core.ir.PatternSerialization
 import dev.hnm.workbench.ui.model.EditorState
 import dev.hnm.workbench.ui.model.WorkspaceMode
 import dev.hnm.workbench.ui.theme.HyleRoles
+import dev.hnm.workbench.ui.theme.LocalReducedMotion
 import dev.hnm.workbench.ui.theme.WorkbenchColors
 import dev.hnm.workbench.ui.theme.WorkbenchTheme
 
@@ -85,7 +87,6 @@ import dev.hnm.workbench.ui.theme.WorkbenchTheme
 @Composable
 fun WorkbenchApp(
     state: EditorState = remember { EditorState() },
-    onOpenGallery: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null,
 ) {
     WorkbenchTheme {
@@ -94,8 +95,8 @@ fun WorkbenchApp(
             BoxWithConstraints(Modifier.fillMaxSize().padding(16.dp)) {
                 val narrow = maxWidth < 720.dp
                 DeviceShell {
-                    if (narrow) NarrowLayout(state, onOpenGallery, onBack)
-                    else WideLayout(state, onOpenGallery, onBack)
+                    if (narrow) NarrowLayout(state, onBack)
+                    else WideLayout(state, onBack)
                 }
             }
         }
@@ -113,7 +114,6 @@ fun WorkbenchApp(
 fun WorkbenchWithSplash(
     state: EditorState = remember { EditorState() },
     seed: Int = 0,
-    onOpenGallery: (() -> Unit)? = null,
     onSelfTest: (() -> Unit)? = null,
     onCaptureDeviceReport: (() -> String)? = null,
     preferences: SplashPreferences = remember { SplashPreferences.inMemory() },
@@ -126,36 +126,38 @@ fun WorkbenchWithSplash(
     var showOnboarding by remember { mutableStateOf(!preferences.shouldShowSplash() && !onboardingPreferences.completed) }
     LaunchedEffect(Unit) { preferences.launchCount += 1 }
     val scene = remember(seed) { dev.hnm.workbench.core.design.SplashMotifs.generate(seed) }
-    AppShell(
-        state = state,
-        onOpenGallery = onOpenGallery,
-        onSelfTest = onSelfTest,
-        onCaptureDeviceReport = onCaptureDeviceReport,
-    )
-    if (showSplash) {
-        SplashScreen(
-            scene = scene,
-            onStart = { if (state.canPlay) state.player.play(scene.pattern) },
-            onFinished = {
-                showSplash = false
-                showOnboarding = !onboardingPreferences.completed
-            },
+    CompositionLocalProvider(LocalReducedMotion provides reducedMotion) {
+        AppShell(
+            state = state,
+            onSelfTest = onSelfTest,
+            onCaptureDeviceReport = onCaptureDeviceReport,
             reducedMotion = reducedMotion,
         )
-    } else if (showOnboarding) {
-        OnboardingScreen(
-            onComplete = { mode ->
-                state.workspaceMode = mode
-                onboardingPreferences.completed = true
-                showOnboarding = false
-            },
-        )
+        if (showSplash) {
+            SplashScreen(
+                scene = scene,
+                onStart = { if (state.canPlay) state.player.play(scene.pattern) },
+                onFinished = {
+                    showSplash = false
+                    showOnboarding = !onboardingPreferences.completed
+                },
+                reducedMotion = reducedMotion,
+            )
+        } else if (showOnboarding) {
+            OnboardingScreen(
+                onComplete = { mode ->
+                    state.workspaceMode = mode
+                    onboardingPreferences.completed = true
+                    showOnboarding = false
+                },
+            )
+        }
     }
 }
 
 /** Phone: one scrolling column inside the screen, transport slab pinned in the flow. */
 @Composable
-private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?, onBack: (() -> Unit)?) {
+private fun NarrowLayout(state: EditorState, onBack: (() -> Unit)?) {
     val scroll = rememberScrollState()
     ScreenPanel(Modifier.fillMaxSize()) {
         Column(
@@ -168,7 +170,7 @@ private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?, onBac
             HorizontalDivider(color = WorkbenchColors.Grid)
             TimelineView(state)
             ChinRow()
-            KeypadSlab(state, onOpenGallery)
+            KeypadSlab(state)
             InspectorPanel(state)
             HorizontalDivider(color = WorkbenchColors.Grid)
             CapabilityPanel(state)
@@ -190,7 +192,7 @@ private fun NarrowLayout(state: EditorState, onOpenGallery: (() -> Unit)?, onBac
 
 /** Desktop: two columns inside one dark screen. */
 @Composable
-private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?, onBack: (() -> Unit)?) {
+private fun WideLayout(state: EditorState, onBack: (() -> Unit)?) {
     ScreenPanel(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             val leftScroll = rememberScrollState()
@@ -222,7 +224,7 @@ private fun WideLayout(state: EditorState, onOpenGallery: (() -> Unit)?, onBack:
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 ChinRow()
-                KeypadSlab(state, onOpenGallery)
+                KeypadSlab(state)
                 HorizontalDivider(color = WorkbenchColors.Grid)
                 CapabilityPanel(state)
                 InspectorPanel(state)
@@ -404,12 +406,13 @@ private fun ChinRow() {
 
 /**
  * The transport slab (recorder2 .controls): one rounded #050402 surface with 2dp seams.
- * Layout: [big Play] [big Stop] [stack: Gallery / Replay].
- * Mapping to the workbench: Play → play current; Stop → (reserved); Gallery → open gallery;
- * Replay → play current again.
+ * Layout: [big Play] [big Stop] [Replay].
+ * Mapping to the workbench: Play → play current; Stop → (reserved); Replay → play current again.
+ * (The third column used to also hold a "Gallery" key into the legacy native-Views feel-test gallery;
+ * that activity is gone as of Phase 7, so Replay now fills the whole column.)
  */
 @Composable
-private fun KeypadSlab(state: EditorState, onOpenGallery: (() -> Unit)?) {
+private fun KeypadSlab(state: EditorState) {
     Column(Modifier.fillMaxWidth()) {
         Box(
             Modifier
@@ -438,24 +441,13 @@ private fun KeypadSlab(state: EditorState, onOpenGallery: (() -> Unit)?) {
                     domeFraction = 0.80f,
                     glyph = { GlyphStop() },
                 )
-                // Stack of two small keys
-                Column(
-                    Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    KeypadCell(
-                        onClick = { onOpenGallery?.invoke() },
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        domeFraction = 0.70f,
-                        glyph = { Text("≡", color = WorkbenchColors.Icon, fontSize = 16.sp) },
-                    )
-                    KeypadCell(
-                        onClick = { state.playCurrent() },
-                        modifier = Modifier.fillMaxWidth().weight(1f),
-                        domeFraction = 0.70f,
-                        glyph = { Text("↻", color = WorkbenchColors.Icon, fontSize = 16.sp) },
-                    )
-                }
+                // Replay key
+                KeypadCell(
+                    onClick = { state.playCurrent() },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    domeFraction = 0.70f,
+                    glyph = { Text("↻", color = WorkbenchColors.Icon, fontSize = 16.sp) },
+                )
             }
         }
         if (!state.canPlay) {
