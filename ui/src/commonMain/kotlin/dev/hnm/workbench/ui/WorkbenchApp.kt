@@ -65,6 +65,7 @@ import dev.hnm.workbench.ui.components.SplashScreen
 import dev.hnm.workbench.ui.components.TexturePalette
 import dev.hnm.workbench.ui.components.TimelineView
 import dev.hnm.workbench.ui.components.WalkthroughCard
+import dev.hnm.workbench.core.ir.PatternSerialization
 import dev.hnm.workbench.ui.model.EditorState
 import dev.hnm.workbench.ui.theme.HyleRoles
 import dev.hnm.workbench.ui.theme.WorkbenchColors
@@ -261,6 +262,7 @@ private fun ScreenPanel(modifier: Modifier = Modifier, content: @Composable () -
 @Composable
 private fun EditorTopBar(state: EditorState, onBack: (() -> Unit)?) {
     var renaming by remember { mutableStateOf(false) }
+    var editingJson by remember { mutableStateOf(false) }
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -289,6 +291,12 @@ private fun EditorTopBar(state: EditorState, onBack: (() -> Unit)?) {
             fontSize = 12.sp,
         )
         Text(
+            "{ }",
+            color = WorkbenchColors.Icon,
+            fontSize = 12.sp,
+            modifier = Modifier.clickable { editingJson = true },
+        )
+        Text(
             "↶",
             color = if (state.canUndo) WorkbenchColors.Icon else WorkbenchColors.Muted,
             fontSize = 16.sp,
@@ -304,6 +312,9 @@ private fun EditorTopBar(state: EditorState, onBack: (() -> Unit)?) {
     if (renaming) {
         RenamePatternDialog(state = state, onDismiss = { renaming = false })
     }
+    if (editingJson) {
+        EditAsJsonSheet(state = state, onDismiss = { editingJson = false })
+    }
 }
 
 @Composable
@@ -317,6 +328,38 @@ private fun RenamePatternDialog(state: EditorState, onDismiss: () -> Unit) {
         },
         confirmButton = {
             TextButton(onClick = { state.renamePattern(text); onDismiss() }) { Text("Save") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+    )
+}
+
+/**
+ * The "Edit as JSON" sheet (Phase 5, technical workspace): the raw IR, round-tripped through
+ * [PatternSerialization] rather than through sliders. Applying invalid JSON shows an inline error
+ * and leaves the pattern untouched — it never throws into the UI.
+ */
+@Composable
+private fun EditAsJsonSheet(state: EditorState, onDismiss: () -> Unit) {
+    var text by remember { mutableStateOf(PatternSerialization.encode(state.pattern)) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit as JSON") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier.fillMaxWidth().height(320.dp),
+                )
+                state.jsonEditError?.let {
+                    Text(it, color = HyleRoles.Destructive, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (state.applyPatternJson(text)) onDismiss() }) { Text("Apply") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

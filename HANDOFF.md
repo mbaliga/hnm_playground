@@ -8,18 +8,18 @@
 **Repo:** `mbaliga/hnm_playground`
 **Default branch:** `main`
 **Working/feature branch:** `claude/haptics-audio-workbench-lgmpsf`
-**Current app version:** `0.20.0` (versionCode 21) — in-app diagnostics line reads `build v0.20`
+**Current app version:** `0.21.0` (versionCode 22) — in-app diagnostics line reads `build v0.21`
 **Latest debug APK:** published to the rolling GitHub Release tag `android-player-debug`
 (filename is version+SHA stamped, e.g. `haptics-player-vX.Y.Z-<shortsha>.apk`).
 
 ---
 
-## 0. UX rebuild status (v1.1 brief, Phases 0–4 of 8)
+## 0. UX rebuild status (v1.1 brief, Phases 0–5 of 8)
 
 Since `v0.15.0` the app has been rebuilt around a new IA and a Hyle-derived design system,
 per a separate "UX Build Brief v1.1" (D1–D6 decisions, per-screen specs, an 8-phase plan).
-Phases 0–4 are done; **see [STATE.md](STATE.md) for the up-to-date one-paragraph summary of
-each**. In short:
+Phases 0–5 are done (Phase 5 deliberately scoped down); **see [STATE.md](STATE.md) for the
+up-to-date one-paragraph summary of each**. In short:
 
 - `AppShell` replaces the old single-activity gallery flow: three tabs (**Feel** home / **Make**
   / **Device**) plus a full-screen **Editor** route entered from any tab.
@@ -34,7 +34,13 @@ each**. In short:
   to giving it a real top bar (back arrow, tap-to-rename, undo/redo) rather than the brief's full
   ask (pinch-zoom timeline, drag-snap, long-press-add, scrub-to-feel). That gesture-level rewrite
   is explicitly deferred, not silently dropped — see `STATE.md`'s Next steps.
-- Phases 5–7 (technical workspace, onboarding + device hero card, polish pass) are not started.
+- Phase 5 shipped only its clearest, most bounded piece: an **Edit-as-JSON sheet** in the Editor
+  top bar (round-trips through `PatternSerialization`, rejects invalid input with an inline error
+  rather than crashing). The brief's other Phase 5 asks — a Simple/Technical workspace *preference*
+  gating it, a command strip, a tabular envelope-breakpoint editor, and a loop region for preview
+  playback — are deferred, not built. (The brief's "rendered lanes" ask was already satisfied by
+  the pre-existing `TimelineView`, which draws haptic + audio as two lanes on one canvas.)
+- Phases 6–7 (onboarding + device hero card, polish pass) are not started.
 - Acceptance criteria that need a physical device or a human tester (60fps on-device, a TalkBack
   pass, "≤60s to first satisfying pattern" by stopwatch) cannot be machine-verified in this
   environment, consistent with this doc's existing §9 caveat that on-actuator feel is

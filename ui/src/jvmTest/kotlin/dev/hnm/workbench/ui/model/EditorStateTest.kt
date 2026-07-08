@@ -102,6 +102,30 @@ class EditorStateTest {
     }
 
     @Test
+    fun applyPatternJsonRoundTripsAndIsUndoable() {
+        val state = EditorState()
+        state.addTransient()
+        val edited = dev.hnm.workbench.core.ir.PatternSerialization.encode(state.pattern)
+            .replace(state.pattern.name, "Edited via JSON")
+
+        assertTrue(state.applyPatternJson(edited))
+        assertEquals("Edited via JSON", state.pattern.name)
+        assertEquals(null, state.jsonEditError)
+
+        state.undo()
+        assertTrue(state.pattern.name != "Edited via JSON")
+    }
+
+    @Test
+    fun applyPatternJsonRejectsGarbageWithoutMutatingPattern() {
+        val state = EditorState()
+        val before = state.pattern
+        assertFalse(state.applyPatternJson("{ not valid json"))
+        assertEquals(before, state.pattern)
+        assertTrue(state.jsonEditError != null)
+    }
+
+    @Test
     fun undoAndRedoAreNoOpsWhenStacksAreEmpty() {
         val state = EditorState()
         val before = state.pattern

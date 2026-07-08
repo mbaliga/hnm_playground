@@ -14,8 +14,8 @@ android {
         applicationId = "dev.hnm.workbench.android"
         minSdk = 31 // VibratorManager + VibrationEffect.Composition primitives
         targetSdk = 34
-        versionCode = 21
-        versionName = "0.20.0"
+        versionCode = 22
+        versionName = "0.21.0"
     }
 
     buildTypes {

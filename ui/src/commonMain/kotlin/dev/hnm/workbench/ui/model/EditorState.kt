@@ -493,6 +493,24 @@ class EditorState {
         selectedAudioEventIndex = null
     }
 
+    // --- edit as JSON (Phase 5: technical workspace) ------------------------
+
+    /** Error from the last "Edit as JSON" apply attempt; null once an apply succeeds. */
+    var jsonEditError by mutableStateOf<String?>(null)
+        private set
+
+    /** Parses [text] as the pattern's JSON and loads it on success. Never throws. */
+    fun applyPatternJson(text: String): Boolean {
+        return try {
+            load(PatternSerialization.decode(text))
+            jsonEditError = null
+            true
+        } catch (t: Throwable) {
+            jsonEditError = "Couldn't parse that JSON: ${t.message ?: "unknown error"}"
+            false
+        }
+    }
+
     fun exportText(): String = when (exportKind) {
         ExportKind.JSON -> PatternSerialization.encode(pattern)
         ExportKind.KOTLIN -> KotlinVibrationEffectExporter.export(pattern, capabilities)

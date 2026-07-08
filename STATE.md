@@ -2,12 +2,12 @@
 
 > Short status. For the full, detailed engineering handoff see **[HANDOFF.md](HANDOFF.md)**.
 
-## Current state (v0.20.0)
+## Current state (v0.21.0)
 - One backend-agnostic IR (`HapticAudioPattern`) is the spine; the render/export seam is swappable per backend.
 - Design vocabulary done: motion → texture → material → navigator, plus rhythm capture and variations.
 - **AI assistant** (on-device intent→pattern engine, offline; cloud LLM seam wired but inactive).
 - **Hyle-derived design system**: vendored tokens/Provenance glow semantics (`HyleTokens`/`HyleProvenance`/`HyleColors`/`HyleRoles`), hand-built Multiplatform-safe dot-grid + glass widgets (`HyleWidgets.kt`) — Hyle itself ships no reusable Compose Multiplatform visuals, so these are original implementations informed by its token values, not a live dependency.
-- **New IA (UX Build Brief v1.1), Phases 0–4 done:** a `Feel` / `Make` / `Device` tab shell (`AppShell`) plus a full-screen `Editor` route reached from any tab and always returning to it; `Feel` lists built-ins + your own patterns with search, rename/duplicate/export/delete; `Make` hosts the Assistant plus five generative mini-flows (Material/Texture/Motion/Rhythm/Blend) reusing existing palette panels; `Device` shows capability diagnostics + report capture. The Editor (`WorkbenchApp`, still the dense panel-based layout) now has a real top bar: back arrow, tap-to-rename, and undo/redo (slider drags coalesce into one undo step via `commitEdit()`/`onValueChangeFinished`).
+- **New IA (UX Build Brief v1.1), Phases 0–5 done (Phase 5 scoped down — see Next steps):** a `Feel` / `Make` / `Device` tab shell (`AppShell`) plus a full-screen `Editor` route reached from any tab and always returning to it; `Feel` lists built-ins + your own patterns with search, rename/duplicate/export/delete; `Make` hosts the Assistant plus five generative mini-flows (Material/Texture/Motion/Rhythm/Blend) reusing existing palette panels; `Device` shows capability diagnostics + report capture. The Editor (`WorkbenchApp`, still the dense panel-based layout) has a real top bar: back arrow, tap-to-rename, undo/redo (slider drags coalesce into one undo step via `commitEdit()`/`onValueChangeFinished`), and an **Edit-as-JSON sheet** (`{ }` button — round-trips the raw IR through `PatternSerialization`, rejecting invalid JSON with an inline error instead of crashing). The timeline (`TimelineView`) already renders haptic + audio as two lanes on one canvas, which covers the brief's "rendered lanes" ask.
 - **`chrome.*` interface-feel vocabulary**: ambient UI feedback (tap/confirm/detent/land/boundary/error/navigate) routed through the same capability-degrade path as content haptics, gated by `ChromePlayer` (busy latch, capability gate, `InterfaceFeelLevel` Off/Subtle/Full).
 - **Recorder2 dark aesthetic** across the Compose workbench and the Android player, now re-keyed onto Hyle roles (violet primary action, radium/cyan provenance glow) rather than literal colors.
 - **Multi-device variance:** capability probing + a seeded **device database** (Pixel/Galaxy/iPhone/DualSense/ERM…) and an in-editor **device simulator**; graceful degradation across LRA/ERM/wideband.
@@ -16,7 +16,7 @@
 - JVM CI green: `core` fully unit-tested; `:ui` renders headlessly to preview PNGs. Android build gated behind `ENABLE_ANDROID=1`; default `./gradlew build` stays JVM-only and validated by CI's Android lane.
 
 ## Next steps
-- Phase 5 — Technical workspace (rendered lanes, command strip, envelope breakpoint table, loop region, Edit-as-JSON sheet).
+- Phase 5 remainder — a Simple/Technical workspace *preference* (the JSON sheet is reachable by anyone right now, not gated behind a mode switch), a command strip, a tabular envelope-breakpoint editor (alternative to the ADSR sliders), and a loop region for preview playback. Deliberately not built in this pass — scoped down to the clearest, most bounded piece (Edit-as-JSON) rather than a half-built version of all five.
 - Phase 6 — Onboarding six-beat flow + Device hero card wired to the real probe/report UI.
 - Phase 7 — Polish pass: motion tokens on transitions, reduced-motion/TalkBack audit, copy audit, delete legacy `MainActivity`, desktop adaptive layout.
 - Full Editor timeline gesture set (pinch-zoom, drag-to-move-with-snap-detents, long-press-add menu, scrub-to-feel) — deliberately not attempted in Phase 4's scoped-down pass; only the top bar (back/rename/undo-redo) was built.
