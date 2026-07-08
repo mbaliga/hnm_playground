@@ -72,6 +72,29 @@ class PreviewRenderTest {
     }
 
     @Test
+    fun rendersEveryMakeSourceMiniFlow() {
+        for (kind in dev.hnm.workbench.ui.nav.MakeSourceKind.entries) {
+            val scene = ImageComposeScene(width = 420, height = 1200, density = Density(1f)) {
+                dev.hnm.workbench.ui.screens.MakeSourceScreen(
+                    kind = kind,
+                    state = EditorState(),
+                    onBack = {},
+                    onOpenEditor = {},
+                )
+            }
+            try {
+                val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                    ?: error("PNG encode returned null")
+                File("build/preview").apply { mkdirs() }
+                File("build/preview/make-source-${kind.name.lowercase()}.png").writeBytes(png)
+                assertTrue(png.size > 5_000, "${kind.title} mini-flow didn't compose (${png.size} bytes)")
+            } finally {
+                scene.close()
+            }
+        }
+    }
+
+    @Test
     fun rendersDeviceScreen() {
         val scene = ImageComposeScene(width = 420, height = 900, density = Density(1f)) {
             dev.hnm.workbench.ui.screens.DeviceScreen(state = EditorState())

@@ -20,9 +20,11 @@ import dev.hnm.workbench.ui.components.DotGridSubstrate
 import dev.hnm.workbench.ui.model.EditorState
 import dev.hnm.workbench.ui.nav.AppRoute
 import dev.hnm.workbench.ui.nav.AppTab
+import dev.hnm.workbench.ui.nav.MakeSourceKind
 import dev.hnm.workbench.ui.screens.DeviceScreen
 import dev.hnm.workbench.ui.screens.FeelScreen
 import dev.hnm.workbench.ui.screens.MakeScreen
+import dev.hnm.workbench.ui.screens.MakeSourceScreen
 import dev.hnm.workbench.ui.theme.HyleColors
 import dev.hnm.workbench.ui.theme.HyleRoles
 
@@ -59,6 +61,10 @@ fun AppShell(
         route = AppRoute.Tab(returnTab)
     }
 
+    fun openMakeSource(kind: MakeSourceKind) {
+        route = AppRoute.MakeSource(kind)
+    }
+
     when (val r = route) {
         is AppRoute.Editor -> {
             // Unchanged existing editor; Gallery button (if wired) still reaches the legacy activity.
@@ -66,6 +72,14 @@ fun AppShell(
             // A minimal way back until Phase 4 gives the Editor its own top bar with a real back arrow:
             // the bottom nav simply isn't shown while editing, so route state itself is the back target.
             BackHandlerHook(onBack = ::closeEditor)
+        }
+        is AppRoute.MakeSource -> {
+            MakeSourceScreen(
+                kind = r.kind,
+                state = state,
+                onBack = { route = AppRoute.Tab(AppTab.MAKE) },
+                onOpenEditor = { openEditor(AppTab.MAKE) },
+            )
         }
         is AppRoute.Tab -> {
             Scaffold(
@@ -96,6 +110,7 @@ fun AppShell(
                         AppTab.MAKE -> MakeScreen(
                             state = state,
                             onOpenEditor = { openEditor(AppTab.MAKE) },
+                            onOpenSource = ::openMakeSource,
                             contentPadding = padding,
                         )
                         AppTab.DEVICE -> DeviceScreen(
