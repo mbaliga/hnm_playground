@@ -8,6 +8,7 @@ import dev.hnm.workbench.core.ir.HapticTrack
 import dev.hnm.workbench.core.ir.Primitive
 import dev.hnm.workbench.core.ir.Transient
 import dev.hnm.workbench.core.library.BuiltInPatterns
+import dev.hnm.workbench.core.settings.SettingsStore
 
 /**
  * The result of an AI generation/edit: the new [pattern], a plain-language [explanation] of what was
@@ -51,6 +52,29 @@ class HybridPatternGenerator(
             }
         }
         return onDevice.generate(prompt, current)
+    }
+}
+
+/**
+ * The seam the UI actually wires the assistant through — see [dev.hnm.workbench.ui.model.EditorState]'s
+ * `generator` field and `AssistantPanel`. [HybridPatternGenerator] itself has no opinion on user
+ * consent: given a non-null [cloud] it tries it every time. This wrapper is what enforces the product's
+ * opt-in-only rule (see [SettingsStore]'s kdoc): [cloud] is passed through to a fresh
+ * [HybridPatternGenerator] **only** when [settings]`.cloudAssistantEnabled` reads `true` at the moment
+ * [generate] is called; otherwise it's discarded before the [HybridPatternGenerator] is even
+ * constructed, so [cloud] is never invoked, not even attempted-and-caught — [onDevice] is the only thing
+ * that runs, full stop. [settings] is read fresh on every call (not cached at construction), so flipping
+ * the Settings toggle takes effect on the very next prompt with no separate "apply" step and no need to
+ * reconstruct this generator.
+ */
+class OptInPatternGenerator(
+    private val settings: SettingsStore,
+    private val onDevice: PatternGenerator = OnDevicePatternGenerator(),
+    private val cloud: PatternGenerator? = null,
+) : PatternGenerator {
+    override suspend fun generate(prompt: String, current: HapticAudioPattern?): GenerationResult {
+        val gatedCloud = cloud.takeIf { settings.cloudAssistantEnabled }
+        return HybridPatternGenerator(onDevice = onDevice, cloud = gatedCloud).generate(prompt, current)
     }
 }
 

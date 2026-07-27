@@ -48,4 +48,7 @@ dependencies {
     implementation(compose.ui)
     // `setContent { }` entrypoint for a ComponentActivity.
     implementation(libs.androidx.activity.compose)
+    // androidx.core.content.FileProvider, for the Clackpad standalone hand-off's content:// share
+    // (Clackpad Integration Contract §2 delivery b) — see ClackpadShare.kt.
+    implementation(libs.androidx.core)
 }

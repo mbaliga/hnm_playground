@@ -23,6 +23,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.hnm.workbench.core.settings.OnboardingProgress
+import dev.hnm.workbench.core.settings.OnboardingTier
+import dev.hnm.workbench.ui.model.EditorState
 import dev.hnm.workbench.ui.theme.WorkbenchColors
 
 private data class Step(val n: String, val title: String, val body: String)
@@ -35,13 +38,118 @@ private val STEPS = listOf(
     Step("5", "Export", "The Export panel shows live Android VibrationEffect code, Apple AHAP, or the raw JSON for whatever you've built — copy it straight into an app."),
 )
 
+/** One rung of the beginner ladder, in order — mirrors [OnboardingProgress]'s four flags. */
+private data class ChecklistItem(
+    val label: String,
+    val hint: String,
+    val done: (OnboardingProgress) -> Boolean,
+)
+
+private val CHECKLIST = listOf(
+    ChecklistItem("Feel one", "Library — tap any saved pattern to play it.") { it.hasFeltOne },
+    ChecklistItem("Make one", "Make — describe a feel to the Assistant and tap Generate.") { it.hasMadeOne },
+    ChecklistItem("Change one", "Editor — select an event, then nudge a slider in the Inspector.") { it.hasChangedOne },
+    ChecklistItem("Ship one", "Editor ⇱ Ship — see the export code for what you built.") { it.hasShippedOne },
+)
+
 /**
- * A first-run walkthrough that explains the whole tool in five steps, plus a one-line note on the
- * perceptual idea behind it. Collapsible and dismissable so it stays out of the way once you know the
- * ropes; a "?" affordance in the header brings it back.
+ * The Learn sheet's content: a starter checklist driven by [EditorState.onboarding] (see
+ * [dev.hnm.workbench.core.settings.SettingsStore]'s beginner-ladder fields), a small progression-ladder
+ * indicator, and — unchanged from before — the collapsible five-step "how this works" explanation.
+ * Coachmarks pointing at the Library tab and the Editor route (`coachmarks/CoachMark.kt`) chase the same
+ * four rungs this checklist tracks, so ticking one off here and having its coachmark disappear elsewhere
+ * are two views of the same underlying progress, not two separate trackers.
  */
 @Composable
-fun WalkthroughCard(modifier: Modifier = Modifier) {
+fun WalkthroughCard(state: EditorState, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth()) {
+        StarterChecklist(state.onboarding)
+        Spacer(Modifier.height(14.dp))
+        WalkthroughSteps()
+    }
+}
+
+/** The checklist + ladder alone, for standalone rendering/testing without pulling in the five-step body. */
+@Composable
+fun StarterChecklist(progress: OnboardingProgress, modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(WorkbenchColors.Surface)
+            .padding(14.dp),
+    ) {
+        Text("Your first steps", color = WorkbenchColors.Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(2.dp))
+        Text(
+            "Four small things, in any order — do them once and this card stays out of your way.",
+            color = WorkbenchColors.InkDim,
+            fontSize = 11.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        OnboardingLadder(progress)
+        Spacer(Modifier.height(10.dp))
+        CHECKLIST.forEach { item -> ChecklistRow(item, item.done(progress)) }
+    }
+}
+
+@Composable
+private fun ChecklistRow(item: ChecklistItem, done: Boolean) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
+        Text(
+            if (done) "✓" else "○",
+            color = if (done) WorkbenchColors.Red else WorkbenchColors.InkDim,
+            fontSize = 13.sp,
+            modifier = Modifier.width(20.dp),
+        )
+        Column {
+            Text(
+                item.label,
+                color = if (done) WorkbenchColors.InkDim else WorkbenchColors.Ink,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            if (!done) {
+                Text(item.hint, color = WorkbenchColors.InkDim, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+/**
+ * A small segmented progress indicator across the four ladder rungs, one segment per [CHECKLIST] item —
+ * filled from that item's own flag, same source of truth the rows below it use, so the bar and the rows
+ * never disagree even though [OnboardingProgress.tier] (shown as the caption underneath) reports only the
+ * furthest rung reached and can outrun the individual flags (see its kdoc: a user can jump straight to
+ * "shipped" without the earlier three ever being set).
+ */
+@Composable
+private fun OnboardingLadder(progress: OnboardingProgress, modifier: Modifier = Modifier) {
+    val tier = progress.tier
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            CHECKLIST.forEach { item ->
+                val reached = item.done(progress)
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(if (reached) WorkbenchColors.Red else WorkbenchColors.Grid),
+                ) {}
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (tier == OnboardingTier.NEW) "Just getting started" else "Furthest so far: ${tier.name.lowercase().replace('_', ' ')}",
+            color = WorkbenchColors.Muted,
+            fontSize = 10.sp,
+        )
+    }
+}
+
+@Composable
+private fun WalkthroughSteps(modifier: Modifier = Modifier) {
     var expanded by remember { mutableStateOf(true) }
 
     Column(

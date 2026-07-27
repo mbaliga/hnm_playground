@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Paths this app's FileProvider (see AndroidManifest.xml) will resolve into a content:// URI.
+  Scoped to exactly the one subdirectory ClackpadShare.kt writes into (docs/CLACKPAD_CONTRACT.md §2
+  delivery b) — nothing else in the cache dir is exposed.
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <cache-path name="clackpad-haptic" path="clackpad-haptic/" />
+</paths>

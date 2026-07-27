@@ -2,8 +2,15 @@
 
 ## Current state
 - v0.14.0 — four design stages done (motion → texture → material → navigator).
-- JVM CI is green: `core` fully unit-tested; `:ui` renders headlessly to a preview PNG.
-- Android build is gated behind `ENABLE_ANDROID=1` (SDK not always provisioned); default `./gradlew build` stays JVM-only.
+- **Android (`androidApp/`) is the primary, first-shipping target**: full Compose workbench UI +
+  Vibrator backend + capability probe. `:androidApp` (and the Android target on `core`/`:ui`) wires
+  into the Gradle build only when `ENABLE_ANDROID=1` or a local `sdk.dir` is present — an environment
+  guard for this SDK-less dev container / the JVM-only `ci.yml` runner, not a priority signal.
+  `android.yml` builds the debug APK on every push/PR (mirrors `ci.yml`'s trigger), not just
+  tags/releases, so Android is checked continuously.
+- JVM desktop (`desktopApp/`) is the secondary dev/debug driver: validates `core` + `:ui` on a plain
+  JVM with no SDK needed. JVM CI (`ci.yml`) is green: `core` fully unit-tested; `:ui` renders
+  headlessly to a preview PNG.
 - One backend-agnostic IR (`HapticAudioPattern`) is the spine; render/export seam is swappable per backend.
 
 ## Next steps

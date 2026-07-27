@@ -4,8 +4,11 @@
 > Cross-platform haptics + audio authoring workbench (Kotlin Multiplatform), one backend-agnostic IR.
 
 A cross-platform tool for **designing, feeling, and exporting haptic + sound effects**.
-Android-first, with JVM desktop next. Two equally-weighted intents: a *playground* to explore and
-feel effects, and a *dev tool* that exports effects into real apps.
+**Android is the primary, first-shipping target** (it's the only platform with a real haptic
+actuator to feel effects on); the JVM desktop app is the secondary dev/debug driver, used to
+validate `core` and the shared `:ui` composables without needing the Android SDK. Two
+equally-weighted intents: a *playground* to explore and feel effects, and a *dev tool* that exports
+effects into real apps.
 
 Built with **Kotlin Multiplatform**; `kotlinx.serialization` is the native save format.
 
@@ -22,8 +25,9 @@ sharpness** plus animatable breakpoint curves. See [`core/.../ir/Ir.kt`](core/sr
 
 ## What's implemented now
 
-This repo currently delivers the **`core` module** — the platform-agnostic keystone — fully built and
-unit-tested on a JVM target, plus a runnable desktop driver:
+This repo delivers the **`core` module** — the platform-agnostic keystone, fully built and
+unit-tested on a JVM target — plus the **Android app** (`androidApp/`, the primary target) and a
+**JVM desktop driver** (`desktopApp/`, the secondary dev/debug target):
 
 | Area | Status | Where |
 |---|---|---|
@@ -38,14 +42,18 @@ unit-tested on a JVM target, plus a runnable desktop driver:
 | Variations (mutate / family / A-B), capture-a-rhythm, pattern library | ✅ | `core/.../design/`, `core/.../library/` |
 | `PatternTransport`: audio + haptics on one clock w/ latency comp | ✅ | `core/.../playback/PatternTransport.kt` |
 | Compose Multiplatform editor UI (timeline, envelope, palette, inspector, live export) | ✅ | `ui/` |
-| JVM desktop audio backend (`javax.sound`) + CLI driver | ✅ | `desktopApp/` |
-| Android Vibrator backend + capability probe | 📋 reference | [docs/ANDROID.md](docs/ANDROID.md) |
+| **Android app: Vibrator backend, capability probe, full workbench UI (primary target)** | ✅ | `androidApp/`, backend design notes in [docs/ANDROID.md](docs/ANDROID.md) |
+| JVM desktop audio backend (`javax.sound`) + CLI driver (secondary dev/debug target) | ✅ | `desktopApp/` |
 | Controller backends (SDL rumble, DualSense HID) | 📋 planned | [docs/MODULES.md](docs/MODULES.md) |
 
-> The Android app and controller-HID backends need the Android SDK / native toolchains that aren't
-> provisioned in this CI image, so they're documented as a copy-ready reference rather than shipped as
-> code that wouldn't compile here. Nothing in `core` depends on a platform, so adding those targets is
-> purely build-config + glue. See [docs/MODULES.md](docs/MODULES.md).
+> The `:androidApp` module (and the Android target on `core`/`:ui`) only wires into the Gradle build
+> when the Android SDK is available — set `ENABLE_ANDROID=1` or point `local.properties` at an
+> `sdk.dir` (see `settings.gradle.kts`). That's an environment guard, not a statement about priority:
+> this dev container and the JVM-only `ci.yml` runner don't carry the Android SDK, so without the
+> guard `./gradlew build` would break there. The dedicated [`android.yml`](.github/workflows/android.yml)
+> workflow sets `ENABLE_ANDROID=1` and builds/installs a real debug APK on every push/PR. Controller-HID
+> backends remain a documented reference, not yet wired into the build — see
+> [docs/MODULES.md](docs/MODULES.md).
 
 ### The editor
 
@@ -57,7 +65,13 @@ off-screen to `ui/build/preview/workbench.png`) and runs as a desktop window via
 ## Run it
 
 ```bash
-# Build everything and run the test suite
+# Android (primary target) — needs the Android SDK. Set ENABLE_ANDROID=1, or let Android Studio
+# write local.properties' sdk.dir for you; either signal wires :androidApp into the build
+# (see settings.gradle.kts). This dev container has no SDK, so this only runs where one is installed.
+ENABLE_ANDROID=1 ./gradlew :androidApp:assembleDebug
+
+# JVM desktop (secondary dev/debug target) — build everything and run the test suite. No Android SDK
+# needed; this is how `core` and `:ui` get validated in this container and in `ci.yml`.
 ./gradlew build
 ./gradlew :core:jvmTest
 
@@ -91,5 +105,5 @@ see [docs/AUTHORING-INTERFACES.md](docs/AUTHORING-INTERFACES.md).
 
 ## Do not touch
 
-- The **Android build is gated behind `ENABLE_ANDROID=1`** (SDK not always in the image) — don't assume the APK builds in CI; the default `./gradlew build` stays JVM-only.
+- The **`:androidApp` module (and the Android target on `core`/`:ui`) is gated behind `ENABLE_ANDROID=1` or a local `sdk.dir`** in `settings.gradle.kts` / `core/build.gradle.kts` / `ui/build.gradle.kts`. This exists purely because this dev container and the JVM-only `ci.yml` runner don't have the Android SDK — it is **not** a signal that Android is secondary. Keep the guard: don't remove it or force it on unconditionally, or `./gradlew build` breaks in SDK-less environments. The default `./gradlew build` here stays JVM-only for that reason, but Android is still checked on every push/PR via the dedicated [`android.yml`](.github/workflows/android.yml) workflow, which sets `ENABLE_ANDROID=1` on a runner that does have the SDK.
 - The single backend-agnostic IR (`HapticAudioPattern`) is the spine — keep the render/export seam swappable per backend.

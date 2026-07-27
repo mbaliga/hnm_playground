@@ -6,15 +6,8 @@ name: Android APK
 
 on:
   push:
-    branches: [claude/haptics-audio-workbench-lgmpsf, main]
-    paths:
-      - 'androidApp/**'
-      - 'core/**'
-      - 'ui/**'
-      - 'gradle/**'
-      - '*.gradle.kts'
-      - 'settings.gradle.kts'
-      - '.github/workflows/android.yml'
+    branches: ["**"]
+  pull_request:
   workflow_dispatch:
 
 permissions:

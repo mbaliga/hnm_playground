@@ -26,5 +26,30 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="Feel-test gallery" />
+
+        <!--
+          Clackpad ⟷ Workbench hand-off (docs/CLACKPAD_CONTRACT.md):
+            - §1 (Clackpad -> Workbench launch) needs NO manifest entry here at all. Clackpad targets
+              WorkbenchActivity with an explicit ComponentName, and explicit-component intents are
+              delivered to onCreate()/getIntent() without matching any <intent-filter> — the MAIN/LAUNCHER
+              filter above is unrelated and untouched. WorkbenchActivity.kt reads intent.action/extras
+              itself (see WorkbenchHandoff.kt / incomingHandoffRole()).
+            - §2 delivery (a), the round-trip result, is a plain Activity-result string extra — no
+              manifest entry either.
+            - §2 delivery (b), the *standalone* hand-off (opened from the library, not from Clackpad),
+              needs this FileProvider: it's the one path that hands Clackpad a content:// URI rather than
+              a string extra (see ClackpadShare.kt). exported=false + grantUriPermissions=true is the
+              standard FileProvider pattern — only apps explicitly granted a URI (via
+              FLAG_GRANT_READ_URI_PERMISSION on the ACTION_SEND intent) can read through it.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 </manifest>
