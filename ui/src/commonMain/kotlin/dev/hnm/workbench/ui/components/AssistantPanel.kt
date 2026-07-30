@@ -47,7 +47,10 @@ private val EDIT_EXAMPLES = listOf("make it softer", "sharper", "longer", "more 
 /**
  * The AI assistant: describe a feel in plain words and it synthesizes (or edits) the pattern, then
  * explains what it did. This is the front door of the tool — you don't need to know the IR to author
- * something good. Powered by [EditorState.generator] (on-device by default; cloud when wired).
+ * something good. Powered by [EditorState.generator], which always runs on-device; a cloud fallback
+ * exists only as a strictly opt-in upgrade (see the Settings sheet's "Cloud assistant" toggle,
+ * `dev.hnm.workbench.core.settings.SettingsStore.cloudAssistantEnabled`, default OFF) and is never
+ * invoked while that toggle is off, full stop — see `dev.hnm.workbench.core.design.OptInPatternGenerator`.
  */
 @Composable
 fun AssistantPanel(state: EditorState, modifier: Modifier = Modifier) {

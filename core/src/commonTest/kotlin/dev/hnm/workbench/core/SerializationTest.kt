@@ -44,6 +44,29 @@ class SerializationTest {
     }
 
     @Test
+    fun voiceFieldDefaultsToNullAndStaysOutOfEncodedDefaults() {
+        // The `voice` field is additive: every pre-existing built-in leaves it null, and (encodeDefaults
+        // = false) means it must not show up in the encoded JSON at all when unset.
+        val json = PatternSerialization.encode(BuiltInPatterns.CONFIRM)
+        assertTrue("voice" !in json, "unset voice must not be encoded")
+        val decoded = PatternSerialization.decode(json)
+        val events = (decoded.tracks.first() as HapticTrack).events
+        assertTrue(events.all { it.voice == null })
+    }
+
+    @Test
+    fun voiceFieldRoundTripsWhenSet() {
+        val pattern = BuiltInPatterns.TAP.copy(
+            tracks = listOf(
+                HapticTrack(id = "h1", events = listOf(Transient(time = 0.0, intensity = 0.8, sharpness = 0.9, voice = "ring"))),
+            ),
+        )
+        val decoded = PatternSerialization.decode(PatternSerialization.encode(pattern))
+        assertEquals(pattern, decoded)
+        assertEquals("ring", (decoded.tracks.first() as HapticTrack).events.first().voice)
+    }
+
+    @Test
     fun fullPolymorphicHierarchyRoundTrips() {
         val pattern = BuiltInPatterns.CONFIRM.copy(
             tracks = listOf(

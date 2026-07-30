@@ -5,12 +5,17 @@ kotlinxCoroutines = "1.10.2"
 compose = "1.8.2"
 agp = "8.7.3"
 activityCompose = "1.9.3"
+androidxCore = "1.13.1"
 
 [libraries]
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+# androidx.core.content.FileProvider — backs the standalone hand-off's content:// share (Clackpad
+# Integration Contract §2 delivery b). Plain `androidx.core:core`, not `-ktx`: nothing here needs the
+# Kotlin extension functions, just the FileProvider class itself.
+androidx-core = { module = "androidx.core:core", version.ref = "androidxCore" }
 
 [plugins]
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }

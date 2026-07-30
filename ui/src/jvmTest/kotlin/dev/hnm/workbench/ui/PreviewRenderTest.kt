@@ -8,6 +8,9 @@ import dev.hnm.workbench.core.design.TextureField
 import dev.hnm.workbench.core.design.TextureFieldType
 import dev.hnm.workbench.core.design.TextureFields
 import dev.hnm.workbench.ui.model.EditorState
+import dev.hnm.workbench.ui.nav.Sheet
+import dev.hnm.workbench.ui.nav.Tab
+import dev.hnm.workbench.ui.nav.WorkbenchNavState
 import org.jetbrains.skia.EncodedImageFormat
 import java.io.File
 import kotlin.test.Test
@@ -176,5 +179,128 @@ class PreviewRenderTest {
         } finally {
             scene.close()
         }
+    }
+
+    // ---- nav shell: tabs, the pushed editor route, and sheets ----
+
+    @Test
+    fun rendersEachTab() {
+        // Exercises the bottom-tab shell end-to-end: Library (row list), Make (assistant + palettes),
+        // and Device (capability picker) must each compose on their own, without an editor pushed.
+        Tab.entries.forEach { tab ->
+            val state = EditorState()
+            val nav = WorkbenchNavState(initialTab = tab)
+            val scene = ImageComposeScene(width = 1180, height = 900, density = Density(1f)) {
+                WorkbenchApp(state = state, nav = nav)
+            }
+            try {
+                val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                    ?: error("PNG encode returned null")
+                File("build/preview").apply { mkdirs() }
+                File("build/preview/workbench-tab-${tab.name.lowercase()}.png").writeBytes(png)
+                assertTrue(png.size > 5_000, "$tab tab didn't compose (${png.size} bytes)")
+            } finally {
+                scene.close()
+            }
+        }
+    }
+
+    @Test
+    fun rendersEditorRoutePushedFromLibraryChevron() {
+        // Simulates the library row's chevron: load a saved pattern, then push the full-screen editor —
+        // the same two calls LibraryListPanel's chevron makes — and confirm the deep-edit surface renders.
+        val state = EditorState()
+        val name = state.library.names.first()
+        state.loadFromLibrary(name)
+        val nav = WorkbenchNavState(initialTab = Tab.LIBRARY)
+        nav.openEditor(name)
+        val scene = ImageComposeScene(width = 1180, height = 900, density = Density(1f)) {
+            WorkbenchApp(state = state, nav = nav)
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-editor-route.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "editor route didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersEditorRouteNarrow() {
+        // The editor route's narrow (phone-width) body, pinned transport slab included.
+        val state = EditorState()
+        val nav = WorkbenchNavState()
+        nav.openEditor()
+        val scene = ImageComposeScene(width = 400, height = 1600, density = Density(1f)) {
+            WorkbenchApp(state = state, nav = nav)
+        }
+        try {
+            val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                ?: error("PNG encode returned null")
+            File("build/preview").apply { mkdirs() }
+            File("build/preview/workbench-editor-route-narrow.png").writeBytes(png)
+            assertTrue(png.size > 5_000, "narrow editor route didn't compose (${png.size} bytes)")
+        } finally {
+            scene.close()
+        }
+    }
+
+    @Test
+    fun rendersEverySheet() {
+        // Every Sheet route (real panel or placeholder) must render over both the tab shell and the
+        // pushed editor without crashing — the whole point of routes existing ahead of their content.
+        Sheet.entries.forEach { sheet ->
+            listOf(false, true).forEach { overEditor ->
+                val state = EditorState()
+                val nav = WorkbenchNavState()
+                if (overEditor) nav.openEditor()
+                nav.openSheet(sheet)
+                val scene = ImageComposeScene(width = 1180, height = 900, density = Density(1f)) {
+                    WorkbenchApp(state = state, nav = nav)
+                }
+                try {
+                    val png = scene.render().encodeToData(EncodedImageFormat.PNG)?.bytes
+                        ?: error("PNG encode returned null")
+                    val suffix = if (overEditor) "editor" else "tabs"
+                    File("build/preview").apply { mkdirs() }
+                    File("build/preview/workbench-sheet-${sheet.name.lowercase()}-$suffix.png").writeBytes(png)
+                    assertTrue(png.size > 5_000, "$sheet sheet (over $suffix) didn't compose (${png.size} bytes)")
+                } finally {
+                    scene.close()
+                }
+            }
+        }
+    }
+
+    @Test
+    fun galleryActionDefaultsToLibraryTabNavigationWhenHostDoesNotOverrideIt() {
+        // No onOpenGallery host override supplied (the default WorkbenchApp() call every host except
+        // Android's WorkbenchActivity makes): the keypad's Gallery key must be wired into our own nav —
+        // Library tab, editor popped — rather than staying the dead no-op stub it used to be.
+        val nav = WorkbenchNavState(initialTab = Tab.MAKE)
+        nav.openEditor("Confirm")
+        val action = resolveGalleryAction(nav, onOpenGallery = null)
+
+        action()
+
+        assertTrue(nav.tab == Tab.LIBRARY, "expected the Library tab, got ${nav.tab}")
+        assertTrue(nav.screen == null, "expected the pushed editor to be popped, got ${nav.screen}")
+    }
+
+    @Test
+    fun galleryActionUsesHostOverrideWhenProvided() {
+        // Android's WorkbenchActivity passes onOpenGallery to jump to its own gallery Activity instead —
+        // resolveGalleryAction must defer to that override and leave nav untouched.
+        val nav = WorkbenchNavState(initialTab = Tab.MAKE)
+        var hostInvoked = false
+        val action = resolveGalleryAction(nav) { hostInvoked = true }
+
+        action()
+
+        assertTrue(hostInvoked, "expected the host override to run")
+        assertTrue(nav.tab == Tab.MAKE, "host override should not also drive nav")
     }
 }

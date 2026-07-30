@@ -3,6 +3,7 @@ package dev.hnm.workbench.core
 import dev.hnm.workbench.core.design.GenerationResult
 import dev.hnm.workbench.core.design.HybridPatternGenerator
 import dev.hnm.workbench.core.design.OnDevicePatternGenerator
+import dev.hnm.workbench.core.design.OptInPatternGenerator
 import dev.hnm.workbench.core.design.PatternGenerator
 import dev.hnm.workbench.core.dsp.PatternTiming
 import dev.hnm.workbench.core.ir.Continuous
@@ -10,9 +11,11 @@ import dev.hnm.workbench.core.ir.HapticAudioPattern
 import dev.hnm.workbench.core.ir.HapticTrack
 import dev.hnm.workbench.core.ir.Transient
 import dev.hnm.workbench.core.library.BuiltInPatterns
+import dev.hnm.workbench.core.settings.InMemorySettingsStore
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -137,5 +140,71 @@ class PatternGeneratorTest {
         val hybrid = HybridPatternGenerator(onDevice = gen, cloud = fakeCloud)
         val r = hybrid.generate("anything", null)
         assertEquals("cloud", r.source)
+    }
+
+    // --- OptInPatternGenerator: the actual opt-in gate the UI wires into ------------------------
+
+    private fun spyCloud(invoked: () -> Unit): PatternGenerator = object : PatternGenerator {
+        override suspend fun generate(prompt: String, current: HapticAudioPattern?): GenerationResult {
+            invoked()
+            return GenerationResult(BuiltInPatterns.TAP, "from cloud", "cloud")
+        }
+    }
+
+    @Test
+    fun optInGeneratorNeverTouchesCloudWhenSettingFlagIsFalse() = runTest {
+        val settings = InMemorySettingsStore() // cloudAssistantEnabled defaults to false
+        var cloudCalled = false
+        val generator = OptInPatternGenerator(settings = settings, onDevice = gen, cloud = spyCloud { cloudCalled = true })
+
+        val r = generator.generate("urgent alert", null)
+
+        assertFalse(cloudCalled, "cloud generator must never be invoked while the setting is off")
+        assertEquals("on-device", r.source)
+    }
+
+    @Test
+    fun optInGeneratorUsesCloudOnlyAfterExplicitOptIn() = runTest {
+        val settings = InMemorySettingsStore()
+        var cloudCalled = false
+        val generator = OptInPatternGenerator(settings = settings, onDevice = gen, cloud = spyCloud { cloudCalled = true })
+
+        generator.generate("urgent alert", null) // still off
+        assertFalse(cloudCalled)
+
+        settings.setCloudAssistantEnabled(true)
+        val r = generator.generate("urgent alert", null)
+
+        assertTrue(cloudCalled, "cloud generator must run once explicitly opted in")
+        assertEquals("cloud", r.source)
+    }
+
+    @Test
+    fun optInGeneratorStopsUsingCloudTheMomentItIsToggledBackOff() = runTest {
+        val settings = InMemorySettingsStore()
+        var cloudCallCount = 0
+        val generator = OptInPatternGenerator(settings = settings, onDevice = gen, cloud = spyCloud { cloudCallCount++ })
+
+        settings.setCloudAssistantEnabled(true)
+        generator.generate("urgent alert", null)
+        assertEquals(1, cloudCallCount)
+
+        settings.setCloudAssistantEnabled(false)
+        val r = generator.generate("urgent alert", null)
+
+        assertEquals(1, cloudCallCount, "cloud must not be invoked again once opted back out")
+        assertEquals("on-device", r.source)
+    }
+
+    @Test
+    fun optInGeneratorWithNoCloudWiredStaysOnDeviceEvenWhenOptedIn() = runTest {
+        // Default construction (no cloud generator wired at all) — opting in has nothing to opt into.
+        val settings = InMemorySettingsStore()
+        settings.setCloudAssistantEnabled(true)
+        val generator = OptInPatternGenerator(settings = settings, onDevice = gen)
+
+        val r = generator.generate("urgent alert", null)
+
+        assertEquals("on-device", r.source)
     }
 }

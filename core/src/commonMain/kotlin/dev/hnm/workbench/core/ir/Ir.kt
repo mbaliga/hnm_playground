@@ -58,6 +58,17 @@ data class AudioTrack(
 @Serializable
 sealed interface HapticEvent {
     val time: Seconds
+
+    /**
+     * Optional flavor-text / timbre hint for a future "feel card" UI (e.g. `"click"`, `"thud"`,
+     * `"swell"`, `"ring"`, `"grain"`) — purely descriptive, never read by any renderer. Additive and
+     * fully optional: defaults to `null` on every event type, so it never appears in encoded JSON for
+     * existing patterns (`encodeDefaults = false`, see [PatternSerialization]) and never affects
+     * equality/round-tripping for anything authored before this field existed. When left `null`,
+     * [dev.hnm.workbench.core.export.ClackpadExporter] falls back to a deterministic sharpness/type
+     * guess rather than requiring every event to carry one.
+     */
+    val voice: String?
 }
 
 /** Instantaneous tap/click. */
@@ -67,6 +78,7 @@ data class Transient(
     override val time: Seconds,
     val intensity: Double, // 0..1
     val sharpness: Double, // 0..1 (perceptual: dull thud -> crisp tick)
+    override val voice: String? = null,
 ) : HapticEvent
 
 /** Sustained buzz with envelope; intensity/sharpness can be animated by curves. */
@@ -78,6 +90,7 @@ data class Continuous(
     val intensity: Double,
     val sharpness: Double,
     val envelope: Envelope = Envelope(),
+    override val voice: String? = null,
 ) : HapticEvent
 
 /** Device-tuned Android primitive. Renders natively on Android; emulated elsewhere. */
@@ -88,6 +101,7 @@ data class Primitive(
     // Serialized as "primitiveType" so it doesn't collide with the polymorphic "type" discriminator.
     @SerialName("primitiveType") val type: PrimitiveType,
     val scale: Double = 1.0, // 0..1
+    override val voice: String? = null,
 ) : HapticEvent
 
 @Serializable
