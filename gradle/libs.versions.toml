@@ -3,7 +3,12 @@ kotlin = "2.1.21"
 kotlinxSerialization = "1.8.1"
 kotlinxCoroutines = "1.10.2"
 compose = "1.8.2"
-agp = "8.7.3"
+# Pinned to match mbaliga/Hyle-Design-System's AGP exactly — Gradle composite builds
+# (includeBuild, used by :androidApp to resolve dev.aarso:crash-recovery when
+# androidSdkAvailable()) require every participating build to use the SAME AGP version,
+# or the build fails with "Using multiple versions of the Android Gradle plugin ... in
+# the same build is not allowed." (Confirmed by real CI failures on BOS_launcher/Horizkeeb.)
+agp = "8.9.1"
 activityCompose = "1.9.3"
 
 [libraries]

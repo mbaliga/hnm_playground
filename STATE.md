@@ -12,3 +12,4 @@
 
 ## Owner-verified
 - On-actuator feel is owner-verified only — the CI image has no actuator/device; render/schedule cores are the machine-verified parts.
+- **Crash recovery** (`dev.aarso:crash-recovery`) — pending device verification (design review, not just compile). **Preview the recovery screen without a real crash:** in the "Feel-test gallery" (`MainActivity`), long-press the "build vX.XX" diagnostics caption (debug builds only) — calls `CrashRecovery.previewIntent(context, "Haptics Workbench")`. No dedicated About screen exists here, so this is the nearest existing version-adjacent text.

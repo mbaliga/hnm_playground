@@ -40,6 +40,9 @@ dependencies {
     implementation(project(":core"))
     // The shared Compose workbench UI (timeline, palettes, library, inspector, export).
     implementation(project(":ui"))
+    // Shared crash-recovery utility, resolved from the hyle-design-system includeBuild
+    // (settings.gradle.kts) — separate coordinate from :hyle, no dependency on it.
+    implementation("dev.aarso:crash-recovery:1.0.0")
 
     // Compose runtime/UI for Android, sourced from the Compose Multiplatform plugin's `compose` DSL.
     implementation(compose.runtime)
