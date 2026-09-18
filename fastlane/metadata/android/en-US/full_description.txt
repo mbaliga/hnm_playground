@@ -1,0 +1,35 @@
+A workbench for designing haptic effects and the sounds that go with them. Build an
+effect on a timeline, feel it on the device in your hand, and export it into a real
+app.
+
+Two things at once, on purpose: a playground for exploring how a haptic feels, and
+a developer tool that produces something you can ship.
+
+ONE EFFECT, EVERY BACKEND
+Audio sounds the same everywhere. Haptics do not: every platform has a different
+actuator, and most desktops have none at all. So an effect here is not written
+against a particular vibrator. It is a definition of events on a timeline, each
+with an intensity and a sharpness plus animatable curves, and each playback backend
+interprets that same definition with whatever hardware it has.
+
+Design the effect once. The phone's actuator, a controller's voice coil, or plain
+audio each render it their own way.
+
+WHAT YOU CAN DO
+• Place events on a timeline and shape them with breakpoint curves.
+• Couple a haptic to its audio so the two are designed as one thing.
+• Feel it immediately on the device you are holding.
+• Save and load effects in a plain, readable format.
+• Export for use in your own app.
+
+BUILT AS A TOOL, NOT A TOY
+The effect definition is the keystone, and it is deliberately portable. Files you
+make here are readable outside this app and are not locked to it.
+
+QUIET BY DESIGN
+• No ads, no accounts, no analytics, no tracking.
+• No network permission at all. Your effects never leave your device.
+
+Haptics on a device with a weak or absent actuator will feel weak or absent. That
+is the hardware, not the app, and the workbench shows you which backend is
+actually running.

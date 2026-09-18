@@ -1,0 +1,1 @@
+Design a haptic and its sound together, feel it, then export it to your app.

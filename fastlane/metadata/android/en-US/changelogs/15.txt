@@ -1,0 +1,2 @@
+Timeline editing with breakpoint curves, audio and haptic coupling, live playback
+on the device's own actuator, and save or load in the portable effect format.
