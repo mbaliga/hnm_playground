@@ -85,6 +85,9 @@ fun confirmEffect(): VibrationEffect =
 See [docs/MODULES.md](docs/MODULES.md) for the module layout, the critical Rust-graftable seam, and
 the M0–M7 build order with current status.
 
+For the multi-platform porting plan (Ubuntu Touch, Linux desktop, iOS/iPadOS, macOS, Windows; plan only,
+nothing built) see [docs/PORTING_PLAN.md](docs/PORTING_PLAN.md).
+
 For where the authoring UI goes next — visual/procedural haptic design (motion primitives → texture
 fields → physics/material), the perceptual grounding, and AI's role as a parameter-space navigator —
 see [docs/AUTHORING-INTERFACES.md](docs/AUTHORING-INTERFACES.md).
