@@ -93,3 +93,7 @@ see [docs/AUTHORING-INTERFACES.md](docs/AUTHORING-INTERFACES.md).
 
 - The **Android build is gated behind `ENABLE_ANDROID=1`** (SDK not always in the image) — don't assume the APK builds in CI; the default `./gradlew build` stays JVM-only.
 - The single backend-agnostic IR (`HapticAudioPattern`) is the spine — keep the render/export seam swappable per backend.
+
+## Licence
+
+Source-available, free for noncommercial use under the [PolyForm Noncommercial License 1.0.0](LICENSE). If you make money with it, you need a commercial licence: see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
