@@ -9,6 +9,7 @@
 ## Next steps
 - Controller HID backends (M6): SDL rumble + DualSense HID.
 - Multi-device variance (M7): capability probing + graceful degradation across LRA / ERM / wideband actuators.
+- Multi-platform porting (Ubuntu Touch, Linux desktop, iOS/iPadOS, macOS, Windows): plan only, nothing built — see [docs/PORTING_PLAN.md](docs/PORTING_PLAN.md).
 
 ## Owner-verified
 - On-actuator feel is owner-verified only — the CI image has no actuator/device; render/schedule cores are the machine-verified parts.
