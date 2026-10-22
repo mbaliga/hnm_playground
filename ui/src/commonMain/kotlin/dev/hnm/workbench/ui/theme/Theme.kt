@@ -57,7 +57,7 @@ object HyleColors {
     val ControlIndicator = Color(HyleTokens.Color.ControlIndicator)
     val ControlScreen = Color(HyleTokens.Color.ControlScreen)       // = recorder2 Screen #141210
     val ControlScreenInk = Color(HyleTokens.Color.ControlScreenInk) // = recorder2 Ink #DDDBD6
-    val ControlScreenDim = Color(HyleTokens.Color.ControlScreenDim) // = recorder2 InkDim #5C5A56
+    val ControlScreenDim = Color(HyleTokens.Color.ControlScreenDim) // secondary text #AAA79F
 }
 
 /**

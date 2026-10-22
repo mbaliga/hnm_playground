@@ -45,7 +45,7 @@ fun CapabilityPanel(state: EditorState, modifier: Modifier = Modifier) {
     val devices = remember { DeviceDatabase.seeded() }
 
     Column(modifier) {
-        Text("Target device", color = WorkbenchColors.Muted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
+        Text("Compatibility preview", color = WorkbenchColors.Muted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -61,7 +61,7 @@ fun CapabilityPanel(state: EditorState, modifier: Modifier = Modifier) {
         }
 
         Text(
-            "or simulate a real device",
+            "or choose a reference profile (playback stays on this device)",
             color = WorkbenchColors.Muted,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),

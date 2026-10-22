@@ -53,6 +53,8 @@ object PatternSerialization {
     fun encode(pattern: HapticAudioPattern, pretty: Boolean = true): String =
         (if (pretty) json else compact).encodeToString(HapticAudioPattern.serializer(), pattern)
 
-    fun decode(text: String): HapticAudioPattern =
-        json.decodeFromString(HapticAudioPattern.serializer(), text)
+    fun decode(text: String): HapticAudioPattern {
+        require(text.encodeToByteArray().size <= dev.hnm.workbench.core.companion.PatternSafety.MAX_BYTES) { "Pattern exceeds 64 KiB" }
+        return json.decodeFromString(HapticAudioPattern.serializer(), text).also(dev.hnm.workbench.core.companion.PatternSafety::validate)
+    }
 }

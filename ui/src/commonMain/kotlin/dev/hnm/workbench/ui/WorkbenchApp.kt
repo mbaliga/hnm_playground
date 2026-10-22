@@ -299,7 +299,7 @@ private fun EditorTopBar(state: EditorState, onBack: (() -> Unit)?) {
                 modifier = Modifier.clickable(onClick = onBack).padding(end = 2.dp),
             )
         } else {
-            RecordingDot(active = true, modifier = Modifier.size(8.dp))
+            Text("EDIT", color = WorkbenchColors.Muted, fontSize = 11.sp)
         }
         Text(
             state.pattern.name.uppercase(),
@@ -401,7 +401,7 @@ private fun ChinRow() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        BatteryBadge(percent = 89)
+        Text("HAFX STUDIO", color = WorkbenchColors.Muted, fontSize = 12.sp)
         SpeakerGrille(Modifier.weight(1f).height(34.dp))
     }
 }
@@ -409,7 +409,7 @@ private fun ChinRow() {
 /**
  * The transport slab (recorder2 .controls): one rounded #050402 surface with 2dp seams.
  * Layout: [big Play] [big Stop] [Replay].
- * Mapping to the workbench: Play → play current; Stop → (reserved); Replay → play current again.
+ * Mapping to the workbench: Play → play current; Stop → cancel current playback; Replay → play current again.
  * (The third column used to also hold a "Gallery" key into the legacy native-Views feel-test gallery;
  * that activity is gone as of Phase 7, so Replay now fills the whole column.)
  */
@@ -434,21 +434,21 @@ private fun KeypadSlab(state: EditorState) {
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     domeFraction = 0.80f,
                     glow = if (state.canPlay) HyleRoles.PlaybackGlow else Color.Transparent,
-                    glyph = { GlyphRec() },
+                    glyph = { Column(horizontalAlignment=Alignment.CenterHorizontally) { Text("▶",color=WorkbenchColors.Icon,fontSize=22.sp); Text("Play",color=WorkbenchColors.OnSurface,fontSize=12.sp) } },
                 )
                 // Big Stop key
                 KeypadCell(
-                    onClick = { /* reserved: stop/pause */ },
+                    onClick = { state.stopPlayback() },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     domeFraction = 0.80f,
-                    glyph = { GlyphStop() },
+                    glyph = { Column(horizontalAlignment=Alignment.CenterHorizontally) { GlyphStop(); Text("Stop",color=WorkbenchColors.OnSurface,fontSize=12.sp) } },
                 )
                 // Replay key
                 KeypadCell(
                     onClick = { state.playCurrent() },
                     modifier = Modifier.weight(1f).fillMaxHeight(),
                     domeFraction = 0.70f,
-                    glyph = { Text("↻", color = WorkbenchColors.Icon, fontSize = 16.sp) },
+                    glyph = { Column(horizontalAlignment=Alignment.CenterHorizontally) { Text("↻", color=WorkbenchColors.Icon,fontSize=22.sp); Text("Replay",color=WorkbenchColors.OnSurface,fontSize=12.sp) } },
                 )
             }
         }

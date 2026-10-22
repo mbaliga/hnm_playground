@@ -49,6 +49,7 @@ fun DeviceScreen(
     contentPadding: PaddingValues = PaddingValues(0.dp),
 ) {
     var report by remember { mutableStateOf<String?>(null) }
+    var confirmRecovery by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().background(HyleRoles.Background),
@@ -61,12 +62,16 @@ fun DeviceScreen(
         item {
             Text("Device", color = HyleRoles.OnSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
-        item { DeviceHeroCard(state) }
         item {
-            val c = state.capabilities
+            Text("Playback: ${state.playbackDeviceName}", color = HyleRoles.OnSurface, fontSize = 18.sp)
+            Text(if (state.playbackCapabilities != null) "Reported by this device; actuator type is an estimate. Reference profiles below do not change this endpoint." else "Open HAfx on a supported device to inspect its playback capabilities.", color = HyleRoles.Muted, fontSize = 13.sp)
+        }
+        item {
+            val c = state.playbackCapabilities
             GlassSurface(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    "actuator: ${c.actuatorType}\n" +
+                    if (c == null) "No playback capability report is available. Compatibility previews below use reference data."
+                    else "actuator: ${c.actuatorType}\n" +
                         "amplitude control: ${yn(c.hasAmplitudeControl)}\n" +
                         "composition primitives: ${c.supportedPrimitives.size}\n" +
                         "frequency control: ${yn(c.hasFrequencyControl)} (Android envelope/PWLE needs API 36)\n" +
@@ -105,6 +110,25 @@ fun DeviceScreen(
             }
         }
 
+        item {
+            Text("Files & backup", color=HyleRoles.OnSurface, fontSize=16.sp)
+            Button(onClick={state.importFile?.invoke()}, enabled=state.importFile != null, modifier=Modifier.fillMaxWidth()) { Text("Import effect or library") }
+            Button(onClick={state.backupLibrary()}, enabled=state.exportFile != null, modifier=Modifier.fillMaxWidth()) { Text("Back up library to file") }
+            Button(onClick={state.attachSearchText?.invoke()}, enabled=state.attachSearchText != null, modifier=Modifier.fillMaxWidth()) { Text("Attach text for watch search") }
+            Text("Use a UTF-8 text file up to 2,000 characters. Save and send the current effect, then open Search lab on the watch. Attached text is included in exports and transfers.", color=HyleRoles.Muted)
+            Text("Native JSON keeps sound, vibration and references. Import adds copies without replacing your draft. Back up before uninstalling.", color=HyleRoles.Muted)
+            if(state.recoveryBackupAvailable) Button(onClick={state.exportRecoveryBackup?.invoke()}, modifier=Modifier.fillMaxWidth()) { Text("Export original recovery file") }
+            if(state.recoveryAvailable) Button(onClick={confirmRecovery=true}, modifier=Modifier.fillMaxWidth()) { Text("Recover unreadable library") }
+        }
+        item { Text("Compatibility preview · reference data", color = HyleRoles.OnSurface, fontSize = 16.sp) }
+        item { DeviceHeroCard(state) }
+        item {
+            Button(onClick = { state.sendCurrent() }, enabled = state.sendToCompanion != null, modifier = Modifier.fillMaxWidth()) { Text("Save and send current effect to watch") }
+            Text(state.companionConnection, color=HyleRoles.OnSurface, fontSize=13.sp)
+            Button(onClick={state.refreshCompanion?.invoke()}, enabled=state.refreshCompanion != null) { Text("Check connection & delivery") }
+            Text(state.companionStatus, color = HyleRoles.OnSurface, fontSize = 13.sp)
+            Text("Wear OS transfers may route through Google services. Receiving an effect never starts playback.", color = HyleRoles.Muted, fontSize = 13.sp)
+        }
         item {
             Text(
                 "Preferences",
@@ -171,6 +195,11 @@ fun DeviceScreen(
             }
         }
     }
+    if(confirmRecovery) androidx.compose.material3.AlertDialog(
+        onDismissRequest={confirmRecovery=false}, title={Text("Start a fresh library?")},
+        text={Text("The unreadable file will be archived on this device first. Your draft is kept. You can then import a previous backup.")},
+        confirmButton={Button(onClick={state.recoverLibrary?.invoke();confirmRecovery=false}) {Text("Archive & recover")}},
+        dismissButton={Button(onClick={confirmRecovery=false}) {Text("Cancel")}})
 }
 
 @Composable
@@ -213,7 +242,7 @@ private fun DeviceHeroCard(state: EditorState) {
                 }
                 if (device.resonantFrequencyHz == null || device.qFactor == null) {
                     Text(
-                        "Seed data — real values come from an on-device probe (API 34).",
+                        "Reference data — not a physical measurement of the playback device.",
                         color = HyleRoles.Muted,
                         fontSize = 10.sp,
                         modifier = Modifier.padding(top = 8.dp),
@@ -227,7 +256,7 @@ private fun DeviceHeroCard(state: EditorState) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Pick a real phone in the Editor's Target device panel to see its resonant frequency and Q.",
+                    "Choose a reference profile in the editor to inspect export compatibility.",
                     color = HyleRoles.Muted,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp),

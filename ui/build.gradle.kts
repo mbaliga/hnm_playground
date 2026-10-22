@@ -48,6 +48,11 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
             }
         }
+        if (androidEnabled) {
+            val androidMain by getting {
+                dependencies { implementation(libs.androidx.activity.compose) }
+            }
+        }
         val jvmMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
@@ -82,7 +87,7 @@ compose.desktop {
     application {
         mainClass = "dev.hnm.workbench.ui.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.AppImage)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Msi)
             packageName = "HapticsAudioWorkbench"
             packageVersion = "1.0.0"
         }

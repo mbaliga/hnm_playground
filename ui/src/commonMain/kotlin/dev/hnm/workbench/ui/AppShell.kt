@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,8 +58,12 @@ fun AppShell(
     reducedMotion: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    var route by remember { mutableStateOf<AppRoute>(AppRoute.Tab(AppTab.FEEL)) }
-    var returnTab by remember { mutableStateOf(AppTab.FEEL) }
+    val routeSaver = Saver<AppRoute, String>(
+        save = { when(it) { is AppRoute.Tab -> "tab:${it.tab.name}"; is AppRoute.MakeSource -> "source:${it.kind.name}"; AppRoute.Editor -> "editor" } },
+        restore = { value -> when { value.startsWith("tab:") -> AppRoute.Tab(AppTab.valueOf(value.substringAfter(':'))); value.startsWith("source:") -> AppRoute.MakeSource(MakeSourceKind.valueOf(value.substringAfter(':'))); else -> AppRoute.Editor } },
+    )
+    var route by rememberSaveable(stateSaver = routeSaver) { mutableStateOf<AppRoute>(AppRoute.Tab(AppTab.FEEL)) }
+    var returnTab by rememberSaveable { mutableStateOf(AppTab.FEEL) }
 
     fun switchTab(tab: AppTab) {
         val current = route
@@ -78,15 +85,18 @@ fun AppShell(
         route = AppRoute.MakeSource(kind)
     }
 
+    Column(modifier.fillMaxSize()) {
+    PlaybackBar(state)
+    Box(Modifier.weight(1f)) {
     when (val r = route) {
         is AppRoute.Editor -> {
             // The Editor's own top bar (WorkbenchApp's EditorTopBar) supplies the back arrow via onBack.
             WorkbenchApp(state = state, onBack = ::closeEditor)
-            // Platform back-gesture hook (Android predictable back / Esc on desktop) — still a no-op
-            // marker; the top bar's back arrow is the primary path for now.
-            BackHandlerHook(onBack = ::closeEditor)
+            // Android Back follows the same route as the visible back action.
+            WorkspaceBackHandler(onBack = ::closeEditor)
         }
         is AppRoute.MakeSource -> {
+            WorkspaceBackHandler { route = AppRoute.Tab(AppTab.MAKE) }
             MakeSourceScreen(
                 kind = r.kind,
                 state = state,
@@ -162,6 +172,9 @@ fun AppShell(
     }
 }
 
+}
+}
+
 private val DESKTOP_MAX_CONTENT_WIDTH = 640.dp
 
 @Composable
@@ -199,14 +212,3 @@ private fun tabColors() = NavigationBarItemDefaults.colors(
     unselectedIconColor = HyleRoles.Muted,
     unselectedTextColor = HyleRoles.Muted,
 )
-
-/**
- * Placeholder for a real platform back-gesture hook (Android predictable back / Esc on desktop).
- * The Editor's top bar already has a working back arrow ([onBack] wired through); this hook is for
- * the OS-level gesture/key, not yet wired to any platform API — a no-op marker so the intent is
- * visible in the tree rather than silently absent.
- */
-@Composable
-private fun BackHandlerHook(onBack: () -> Unit) {
-    // Intentionally inert for now — see KDoc above.
-}

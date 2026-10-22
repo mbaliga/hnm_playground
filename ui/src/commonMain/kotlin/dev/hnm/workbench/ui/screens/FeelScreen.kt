@@ -24,6 +24,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -41,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.hnm.workbench.core.ir.HapticAudioPattern
 import dev.hnm.workbench.core.ir.PatternSerialization
+import dev.hnm.workbench.core.library.StarterEffects
+import dev.hnm.workbench.core.library.EffectAttribution
+import dev.hnm.workbench.ui.components.EffectReferenceDialog
 import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.ui.components.GlassSurface
 import dev.hnm.workbench.ui.model.EditorState
@@ -52,8 +56,6 @@ private val EMPTY_STATE_PROMPTS = listOf(
     "rain on a tin roof",
     "a heavy switch",
 )
-
-private const val SEARCH_THRESHOLD = 12
 
 /**
  * Feel — the home tab (UX brief §6.1). The library reborn: tap a card to *feel* it (primary affordance,
@@ -77,19 +79,20 @@ fun FeelScreen(
     var pendingDelete by remember { mutableStateOf<String?>(null) }
     var exportPreview by remember { mutableStateOf<Pair<String, String>?>(null) } // name to JSON
 
-    val builtInNames = remember { BuiltInPatterns.ALL.map { it.name }.toSet() }
-    val yours = remember(libraryEpoch) {
-        state.library.names.filter { it !in builtInNames }.mapNotNull { state.library.get(it) }
+    val yours = remember(libraryEpoch, state.libraryVersion) {
+        state.library.all().filter { it !in BuiltInPatterns.ALL }
     }
-    val builtIns = BuiltInPatterns.ALL
-    val totalCount = yours.size + builtIns.size
-    val showSearch = totalCount > SEARCH_THRESHOLD
+    val builtIns = BuiltInPatterns.ALL.filter { it !in StarterEffects.ALL }
+    val showSearch = true
 
-    fun matches(p: HapticAudioPattern) = query.isBlank() || p.name.contains(query, ignoreCase = true)
+    fun matches(p: HapticAudioPattern): Boolean {
+        val info = EffectAttribution.from(p)
+        return query.isBlank() || (listOf(p.name, info?.description.orEmpty()) + info?.sources.orEmpty().map { it.title })
+            .any { it.contains(query, ignoreCase = true) }
+    }
 
     fun feel(pattern: HapticAudioPattern) {
-        state.load(pattern)
-        scope.launch { state.playCurrentLatched() }
+        state.audition(pattern)
     }
 
     fun open(pattern: HapticAudioPattern) {
@@ -98,10 +101,7 @@ fun FeelScreen(
     }
 
     fun duplicate(pattern: HapticAudioPattern) {
-        var candidate = "${pattern.name} copy"
-        var n = 2
-        while (state.library.get(candidate) != null) { candidate = "${pattern.name} copy $n"; n++ }
-        state.library.save(pattern.copy(name = candidate))
+        state.duplicateInLibrary(pattern)
         libraryEpoch++
     }
 
@@ -114,6 +114,8 @@ fun FeelScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
+            Text("Choose an effect, hear and feel it, then open it to make it yours.", color=HyleRoles.Muted, fontSize=13.sp)
+            if(state.importFile != null) Button(onClick={state.importFile?.invoke()}) { Text("Import effect or backup") }
             Text("Feel", color = HyleRoles.OnSurface, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
         if (showSearch) {
@@ -122,7 +124,7 @@ fun FeelScreen(
                     value = query,
                     onValueChange = { query = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search patterns", fontSize = 12.sp, color = HyleRoles.Muted) },
+                    placeholder = { Text("Search effects or references", fontSize = 12.sp, color = HyleRoles.Muted) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     textStyle = androidx.compose.ui.text.TextStyle(color = HyleRoles.OnSurface, fontSize = 13.sp),
@@ -149,12 +151,25 @@ fun FeelScreen(
                     pattern = pattern,
                     deletable = true,
                     onFeel = { feel(pattern) },
+                    onFeelHaptics = { state.audition(dev.hnm.workbench.core.companion.WristPatterns.hapticsOnly(pattern).copy(name="${pattern.name.take(140)} · haptics only")) },
                     onOpen = { open(pattern) },
                     onDuplicate = { duplicate(pattern) },
                     onExport = { exportPreview = pattern.name to PatternSerialization.encode(pattern) },
                     onDelete = { pendingDelete = pattern.name },
                 )
             }
+        }
+
+        item {
+            Text("Starter effects", color = HyleRoles.OnSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("Original HAfx designs · references included", color = HyleRoles.Muted, fontSize = 12.sp)
+        }
+        items(StarterEffects.ALL.filter(::matches)) { pattern ->
+            PatternCard(pattern = pattern, deletable = false,
+                onFeel = { feel(pattern) }, onOpen = { open(pattern) },
+                onFeelHaptics = { state.audition(dev.hnm.workbench.core.companion.WristPatterns.hapticsOnly(pattern).copy(name="${pattern.name.take(140)} · haptics only")) },
+                onDuplicate = { duplicate(pattern) },
+                onExport = { exportPreview = pattern.name to PatternSerialization.encode(pattern) }, onDelete = {})
         }
 
         item {
@@ -171,6 +186,7 @@ fun FeelScreen(
                 pattern = pattern,
                 deletable = false,
                 onFeel = { feel(pattern) },
+                onFeelHaptics = { state.audition(dev.hnm.workbench.core.companion.WristPatterns.hapticsOnly(pattern).copy(name="${pattern.name.take(140)} · haptics only")) },
                 onOpen = { open(pattern) },
                 onDuplicate = { duplicate(pattern) },
                 onExport = { exportPreview = pattern.name to PatternSerialization.encode(pattern) },
@@ -178,6 +194,9 @@ fun FeelScreen(
             )
         }
 
+        if (query.isNotBlank() && yours.none(::matches) && builtIns.none(::matches) && StarterEffects.ALL.none(::matches)) {
+            item { Text("No matching effects. Try a different name.", color = HyleRoles.OnSurface) }
+        }
         item {
             SelfTestRow(onSelfTest = onSelfTest)
         }
@@ -217,7 +236,10 @@ fun FeelScreen(
                 )
             },
             confirmButton = {
-                Button(onClick = { exportPreview = null }) { Text("Close") }
+                Row {
+                    Button(onClick = { state.shareExport?.invoke(json) }, enabled = state.shareExport != null) { Text("Share") }
+                    Button(onClick = { exportPreview = null }) { Text("Close") }
+                }
             },
         )
     }
@@ -259,21 +281,25 @@ private fun PatternCard(
     onDuplicate: () -> Unit,
     onExport: () -> Unit,
     onDelete: () -> Unit,
+    onFeelHaptics: (() -> Unit)? = null,
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showReference by remember { mutableStateOf(false) }
+    val attribution = EffectAttribution.from(pattern)
     GlassSurface(modifier = Modifier.fillMaxWidth()) {
-        Box {
+        Column {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .combinedClickable(onClick = onFeel, onLongClick = { showMenu = true })
+                    .combinedClickable(onClick = onOpen, onLongClick = { showMenu = true })
                     .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(pattern.name, color = HyleRoles.OnSurface, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                    attribution?.let { Text(it.description, color = HyleRoles.Muted, fontSize = 12.sp) }
                     Text(
-                        "${pattern.tracks.size} track${if (pattern.tracks.size == 1) "" else "s"}",
+                        (if(dev.hnm.workbench.core.companion.WristPatterns.hasSound(pattern)) { if(dev.hnm.workbench.core.companion.WristPatterns.hasHaptics(pattern)) "Sound + haptics · " else "Sound · " } else "Haptics · ") + "${pattern.tracks.size} track${if (pattern.tracks.size == 1) "" else "s"}",
                         color = HyleRoles.Muted,
                         fontSize = 11.sp,
                     )
@@ -287,7 +313,15 @@ private fun PatternCard(
                     Text("›", color = HyleRoles.PrimaryAction, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
+            Row {
+                Button(onClick = onFeel) { Text(if(dev.hnm.workbench.core.companion.WristPatterns.hasSound(pattern)) { if(dev.hnm.workbench.core.companion.WristPatterns.hasHaptics(pattern)) "Hear & feel" else "Hear" } else "Feel") }
+                Button(onClick = { showMenu = true }) { Text("More") }
+                if (attribution != null) TextButton(onClick = { showReference = true }) { Text("Reference") }
+            }
             DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                if (dev.hnm.workbench.core.companion.WristPatterns.hasSound(pattern) && dev.hnm.workbench.core.companion.WristPatterns.hasHaptics(pattern) && pattern.couplings.none { it.mode == dev.hnm.workbench.core.ir.CouplingMode.AUDIO_DRIVES_HAPTICS } && onFeelHaptics != null) {
+                    DropdownMenuItem(text = { Text("Haptics-only preview") }, onClick = { showMenu = false; onFeelHaptics() })
+                }
                 DropdownMenuItem(text = { Text("Open in Editor") }, onClick = { showMenu = false; onOpen() })
                 DropdownMenuItem(text = { Text("Duplicate") }, onClick = { showMenu = false; onDuplicate() })
                 DropdownMenuItem(text = { Text("Export…") }, onClick = { showMenu = false; onExport() })
@@ -297,6 +331,7 @@ private fun PatternCard(
             }
         }
     }
+    if (showReference) EffectReferenceDialog(pattern) { showReference = false }
 }
 
 @Composable

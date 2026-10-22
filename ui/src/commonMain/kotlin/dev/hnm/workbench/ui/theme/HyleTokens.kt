@@ -91,7 +91,8 @@ object HyleTokens {
         const val ControlIndicator: Long = 0xFF6B6760L
         const val ControlScreen: Long = 0xFF141210L
         const val ControlScreenInk: Long = 0xFFDDDBD6L
-        const val ControlScreenDim: Long = 0xFF5C5A56L
+        // Secondary text must remain readable on the dark control surface.
+        const val ControlScreenDim: Long = 0xFFAAA79FL
     }
 
     /** Spacing/radius/size scale, dp (type scale is sp — same numeric values). */

@@ -32,7 +32,7 @@ object KotlinVibrationEffectExporter {
 
         val funcName = functionName(pattern.name)
         val canCompose = target.supportedPrimitives.isNotEmpty() &&
-            events.all { it is Transient || it is Primitive }
+            events.isNotEmpty() && events.all { (it is Transient && HapticMapping.transientToPrimitive(it.sharpness, target.supportedPrimitives) != null) || (it is Primitive && it.type in target.supportedPrimitives) }
 
         val body = if (canCompose) composition(events, target) else waveform(events)
         return """

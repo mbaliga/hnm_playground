@@ -30,7 +30,7 @@ include(":desktopApp")
 // available (CI installs one). In SDK-less environments the module is skipped and `:core` stays a
 // JVM-only KMP module — keeping `./gradlew build` green here while CI builds the real APK.
 if (androidSdkAvailable()) {
-    include(":androidApp")
+    include(":androidApp", ":androidRuntime", ":wearApp")
 }
 
 // NOTE: `:backend-desktop` (controller HID backends) is described in docs/MODULES.md. It requires

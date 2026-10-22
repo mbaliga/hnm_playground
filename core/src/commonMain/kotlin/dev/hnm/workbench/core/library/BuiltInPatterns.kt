@@ -316,7 +316,7 @@ object BuiltInPatterns {
         TAP, SELECTION, DOUBLE_TAP, CONFIRM, SUCCESS, ERROR, WARNING,
         NOTIFICATION, TOGGLE_ON, TOGGLE_OFF, SWIPE, SNAP, HEARTBEAT,
         TRIPLE_TICK, SPIN_LOCK,
-    )
+    ) + StarterEffects.ALL
 
     // ---------------------------------------------------------------------------
     // Chrome — the app's own interface feel vocabulary (UX brief §3.3). Deliberately NOT part of [ALL]:

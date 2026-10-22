@@ -67,9 +67,11 @@ class DesignTest {
         assertEquals(lib.names.toSet(), restored.names.toSet())
         assertEquals(BuiltInPatterns.CONFIRM, restored.get("Confirm"), "original Confirm should round-trip unchanged")
 
-        restored.remove("Confirm")
-        assertNull(restored.get("Confirm"))
-        assertEquals(BuiltInPatterns.ALL.size, restored.size) // back to all built-ins minus Confirm
+        assertNull(restored.remove("Confirm"), "Bundled examples are immutable")
+        assertEquals(BuiltInPatterns.CONFIRM, restored.get("Confirm"))
+        restored.remove(mutated.name)
+        assertNull(restored.get(mutated.name))
+        assertEquals(BuiltInPatterns.ALL.size, restored.size)
     }
 
     @Test

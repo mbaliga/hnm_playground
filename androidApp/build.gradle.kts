@@ -14,8 +14,8 @@ android {
         applicationId = "dev.hnm.workbench.android"
         minSdk = 31 // VibratorManager + VibrationEffect.Composition primitives
         targetSdk = 34
-        versionCode = 25
-        versionName = "0.24.0"
+        versionCode = 30
+        versionName = "0.25.0-mvp02"
     }
 
     buildTypes {
@@ -38,6 +38,8 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":androidRuntime"))
+    implementation(libs.kotlinx.coroutines.core)
     // The shared Compose workbench UI (timeline, palettes, library, inspector, export).
     implementation(project(":ui"))
 

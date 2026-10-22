@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,9 +34,19 @@ fun ExportPanel(state: EditorState, modifier: Modifier = Modifier) {
                 )
             }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { state.shareCurrentExport() }, enabled = state.shareExport != null) { Text("Share export") }
+            Button(onClick = { state.sendCurrent() }, enabled = state.sendToCompanion != null) { Text("Send to watch") }
+        }
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Button(onClick={state.exportNative()}, enabled=state.exportFile != null) { Text("Save effect file") }
+            Button(onClick={state.exportAudio()}, enabled=state.exportFile != null) { Text("Save sound WAV") }
+        }
+        Text(state.companionStatus, color = WorkbenchColors.Muted)
+        Text("Reference profile affects export; playback uses this device's probed capabilities.", color = WorkbenchColors.Muted)
         // No internal scroll/fillMaxSize: this panel always sits inside a scrolling parent column, so a
         // nested scroll here would measure with infinite height. Lay out at natural height instead.
-        Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        SelectionContainer { Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Text(
                 state.exportText(),
                 color = WorkbenchColors.OnSurface,
@@ -54,4 +66,5 @@ fun ExportPanel(state: EditorState, modifier: Modifier = Modifier) {
             )
         }
     }
+}
 }

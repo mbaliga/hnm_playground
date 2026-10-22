@@ -1,6 +1,8 @@
 package dev.hnm.workbench.core.playback
 
 import dev.hnm.workbench.core.ir.HapticAudioPattern
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * The seam that lets the shared workbench UI trigger real playback without depending on any platform.
@@ -12,9 +14,15 @@ import dev.hnm.workbench.core.ir.HapticAudioPattern
  */
 fun interface PatternPlayer {
     fun play(pattern: HapticAudioPattern)
+    fun stop() {}
+    val status: StateFlow<PlaybackStatus> get() = idleStatus
 
     companion object {
+        private val idleStatus = MutableStateFlow(PlaybackStatus())
         /** A no-op player for hosts without an actuator (e.g. the desktop window). */
         val None: PatternPlayer = PatternPlayer { }
     }
 }
+
+/** Dispatch state; never a claim that motor onset was physically measured. */
+data class PlaybackStatus(val active: Boolean = false, val message: String = "Ready")

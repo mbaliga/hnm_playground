@@ -1,0 +1,40 @@
+name: Phone and watch MVP
+on:
+  pull_request:
+    paths:
+      - 'core/**'
+      - 'ui/**'
+      - 'androidApp/**'
+      - 'androidRuntime/**'
+      - 'wearApp/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - '.github/workflows/watch-alpha.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      ENABLE_ANDROID: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test and assemble both apps
+        run: ./gradlew :core:jvmTest :ui:jvmTest :androidApp:assembleDebug :wearApp:assembleDebug :androidApp:lintDebug :wearApp:lintDebug :androidRuntime:lintDebug :androidRuntime:assembleDebugAndroidTest --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hafx-watch-mvp
+          path: |
+            androidApp/build/outputs/apk/debug/*.apk
+            wearApp/build/outputs/apk/debug/*.apk
+            androidRuntime/build/outputs/apk/androidTest/debug/*.apk
+            **/build/reports/
+            ui/build/preview/

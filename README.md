@@ -1,5 +1,7 @@
 # Haptics + Audio Workbench
 
+**HAfx Studio + Watch MVP candidate (0.25.0-mvp02):** [Install, create, back up and validate](docs/MVP.md). Includes watch authoring, paired sound/haptics, native file exchange and companion revisions. Physical device and paired delivery acceptance remain release gates.
+
 > **Constellation** · `state: active` · public · [registry: `Personal-Tracker/CONSTELLATION.md`](https://github.com/mbaliga/Personal-Tracker/blob/main/CONSTELLATION.md)
 > Cross-platform haptics + audio authoring workbench (Kotlin Multiplatform), one backend-agnostic IR.
 

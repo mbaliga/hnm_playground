@@ -51,8 +51,12 @@ enum class WorkspaceMode { VIBE, TECHNICAL }
  * capability profile, pattern library, and rhythm capture state. All heavy lifting lives in `core`;
  * the UI is a thin shell. IR is immutable — edits replace the whole pattern.
  */
-class EditorState {
-    var pattern by mutableStateOf<HapticAudioPattern>(BuiltInPatterns.CONFIRM)
+class EditorState(
+    val library: PatternLibrary = PatternLibrary.withBuiltIns(),
+    initialPattern: HapticAudioPattern = BuiltInPatterns.CONFIRM,
+    private val onDraftChanged: (HapticAudioPattern) -> Unit = {},
+) {
+    var pattern by mutableStateOf<HapticAudioPattern>(initialPattern)
         private set
 
     private val capabilitiesState = mutableStateOf(HapticCapabilities.LRA_FULL)
@@ -72,6 +76,8 @@ class EditorState {
      * reflect the same selection instead of keeping independent local UI state.
      */
     var selectedDevice by mutableStateOf<DeviceProfile?>(null)
+    var playbackDeviceName by mutableStateOf("No playback device")
+    var playbackCapabilities by mutableStateOf<HapticCapabilities?>(null)
 
     /** Simulate [device]'s real capabilities (resonant frequency, Q, primitives, etc). */
     fun selectDevice(device: DeviceProfile) {
@@ -121,6 +127,7 @@ class EditorState {
             pushHistory(pattern)
         }
         pattern = newPattern
+        persistDraft()
     }
 
     /** Ends an in-progress coalesced drag, turning it into one undo step. No-op if nothing pending. */
@@ -135,6 +142,7 @@ class EditorState {
         val previous = undoStack.removeLastOrNull() ?: return
         redoStack.add(pattern)
         pattern = previous
+        persistDraft()
         clampSelectionToCurrentPattern()
     }
 
@@ -142,6 +150,7 @@ class EditorState {
         val next = redoStack.removeLastOrNull() ?: return
         undoStack.add(pattern)
         pattern = next
+        persistDraft()
         clampSelectionToCurrentPattern()
     }
 
@@ -171,8 +180,54 @@ class EditorState {
     /** Whether playback is even possible in this host (drives the Play button's enabled state). */
     val canPlay: Boolean get() = player !== PatternPlayer.None
 
-    /** Feel the current pattern on the device, if a real player is wired. */
-    fun playCurrent() = player.play(pattern)
+    /** Durable workspace and companion feedback, shared by the phone and desktop UI. */
+    var libraryVersion by mutableStateOf(0)
+    var workspaceMessage by mutableStateOf<String?>(null)
+    var companionConnection by mutableStateOf("Checking companion…")
+    var refreshCompanion: (() -> Unit)? = null
+    var companionStatus by mutableStateOf("Save an effect, then send it to your watch")
+    var sendToCompanion: ((HapticAudioPattern) -> Unit)? = null
+    var shareExport: ((String) -> Unit)? = null
+    var attachSearchText: (() -> Unit)? = null
+    var importFile: (() -> Unit)? = null
+    var exportFile: ((String, String, ByteArray) -> Unit)? = null
+    var recoveryAvailable by mutableStateOf(false)
+    var recoveryBackupAvailable by mutableStateOf(false)
+    var exportRecoveryBackup: (() -> Unit)? = null
+    var recoverLibrary: (() -> Unit)? = null
+    fun backupLibrary() { exportFile?.invoke("hafx-library.json", "application/json", library.toJson().encodeToByteArray()) }
+    fun exportNative() {
+        runCatching {
+            val snapshot=dev.hnm.workbench.core.companion.PatternTransfer.revise(pattern,"export")
+            exportFile?.invoke("hafx-effect.json","application/json",PatternSerialization.encode(snapshot).encodeToByteArray())
+        }.onFailure { workspaceMessage="Could not export effect: ${it.message}" }
+    }
+    fun shareCurrentExport() {
+        runCatching {
+            val text=if(exportKind==ExportKind.JSON) PatternSerialization.encode(dev.hnm.workbench.core.companion.PatternTransfer.revise(pattern,"export")) else exportText()
+            shareExport?.invoke(text)
+        }.onFailure { workspaceMessage="Could not share effect: ${it.message}" }
+    }
+    fun exportAudio() {
+        runCatching {
+            dev.hnm.workbench.core.companion.PatternSafety.validate(pattern)
+            require(dev.hnm.workbench.core.companion.WristPatterns.hasSound(pattern)) { "This effect has no sound layer" }
+            require(pattern.tracks.filterIsInstance<AudioTrack>().none { t -> t.events.any { it is dev.hnm.workbench.core.ir.SampleEvent } }) { "Sample assets are not available" }
+            dev.hnm.workbench.core.export.WavExporter.exportAudio(pattern)
+        }.onSuccess { exportFile?.invoke("hafx-sound.wav", "audio/wav", it) }
+         .onFailure { workspaceMessage = "Could not export sound: ${it.message}" }
+    }
+
+    private fun persistDraft() {
+        runCatching { onDraftChanged(pattern) }.onFailure { workspaceMessage = "Draft not saved: ${it.message}" }
+    }
+    fun playCurrent() = audition(pattern)
+    fun audition(effect: HapticAudioPattern) = player.play(effect)
+    fun stopPlayback() { player.stop(); chrome.busy = false }
+    fun sendCurrent() {
+        val saved = saveToLibrary() ?: return
+        sendToCompanion?.invoke(saved)
+    }
 
     // --- interface feel (UX brief §3.3) -------------------------------------
 
@@ -182,7 +237,7 @@ class EditorState {
      * actuator after construction) doesn't require rebuilding this.
      */
     val chrome: ChromePlayer = ChromePlayer(
-        player = PatternPlayer { p -> player.play(p) },
+        player = PatternPlayer { p -> if (!player.status.value.active) player.play(p) },
         hasAmplitudeControl = capabilities.hasAmplitudeControl,
     )
 
@@ -195,15 +250,7 @@ class EditorState {
      * ambient interface feedback never fires over real content. Desktop/no-actuator hosts still get the
      * latch (harmless — [chrome] would no-op there anyway since nothing calls it mid-playback).
      */
-    suspend fun playCurrentLatched() {
-        chrome.busy = true
-        try {
-            playCurrent()
-            delay((durationSeconds * 1000).toLong().coerceAtLeast(1))
-        } finally {
-            chrome.busy = false
-        }
-    }
+    suspend fun playCurrentLatched() { audition(pattern) }
 
     // --- AI assistant ------------------------------------------------------
 
@@ -226,7 +273,7 @@ class EditorState {
     /**
      * Generate (or edit) from a natural-language prompt. Routes through [generator]: if the prompt
      * reads as an edit ("softer", "longer") it adjusts the current pattern; otherwise it creates one.
-     * Auto-plays the result when a real actuator is wired so you immediately feel what you described.
+     * Leaves audition to an explicit user action, including when generated content contains audio.
      */
     suspend fun generate(prompt: String) {
         if (prompt.isBlank()) return
@@ -236,7 +283,7 @@ class EditorState {
             load(result.pattern)
             assistantMessage = result.explanation
             lastPrompt = prompt
-            if (canPlay) playCurrent()
+            // Generation remains silent until the user deliberately auditions the result.
         } catch (t: Throwable) {
             assistantMessage = "Couldn't generate that: ${t.message ?: "unknown error"}. Try simpler words like \"sharp tap\" or \"soft buzz\"."
         } finally {
@@ -261,25 +308,39 @@ class EditorState {
             importMessage = "That doesn't look like valid AHAP JSON."
             return false
         }
-        load(imported)
+        try { load(imported) } catch (e: IllegalArgumentException) {
+            importMessage = "Could not import: ${e.message}"
+            return false
+        }
         importMessage = "Imported \"${imported.name}\" — ${hapticEvents.size} haptic events."
         return true
     }
 
     // --- library -----------------------------------------------------------
 
-    val library = PatternLibrary.withBuiltIns()
+    fun saveToLibrary(name: String = pattern.name): HapticAudioPattern? = runCatching {
+        val saved = library.saveUser(pattern.copy(name = name.ifBlank { pattern.name }))
+        setPattern(saved)
+        libraryVersion++
+        workspaceMessage = "Saved ${saved.name} on this device"
+        saved
+    }.getOrElse { workspaceMessage = "Not saved: ${it.message}"; null }
 
-    fun saveToLibrary(name: String = pattern.name) {
-        library.save(pattern.copy(name = name.ifBlank { pattern.name }))
+    fun duplicateInLibrary(effect: HapticAudioPattern) {
+        runCatching { library.saveUser(effect.copy(name = "${effect.name.take(140)} copy", metadata = emptyMap())) }
+            .onSuccess { libraryVersion++; workspaceMessage = "Copy saved" }
+            .onFailure { workspaceMessage = "Not saved: ${it.message}" }
     }
 
     fun loadFromLibrary(name: String) {
-        val p = library.get(name) ?: return
+        val p = library.get(name) ?: dev.hnm.workbench.core.library.BuiltInPatterns.ALL.firstOrNull { it.name == name } ?: return
         load(p)
     }
 
-    fun removeFromLibrary(name: String) = library.remove(name)
+    fun removeFromLibrary(name: String) {
+        runCatching { library.remove(name) }.onSuccess { libraryVersion++ }
+            .onFailure { workspaceMessage = "Could not delete: ${it.message}" }
+    }
 
     // --- rhythm capture ----------------------------------------------------
 
@@ -516,6 +577,7 @@ class EditorState {
 
     /** Replace the whole pattern (e.g. when loading a motion primitive or library entry). */
     fun load(newPattern: HapticAudioPattern) {
+        dev.hnm.workbench.core.companion.PatternSafety.validate(newPattern)
         setPattern(newPattern)
         variationSeed = 1
         select(if (hapticEventsOf(newPattern).isNotEmpty()) 0 else null)

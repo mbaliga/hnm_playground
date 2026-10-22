@@ -37,7 +37,7 @@ import dev.hnm.workbench.ui.theme.WorkbenchColors
 fun LibraryPanel(state: EditorState, modifier: Modifier = Modifier) {
     // Track library snapshot so the row re-reads when the user saves.
     var libraryEpoch by remember { mutableStateOf(0) }
-    val names = remember(libraryEpoch) { state.library.names }
+    val names = remember(libraryEpoch, state.libraryVersion) { (dev.hnm.workbench.core.library.BuiltInPatterns.ALL.map { it.name } + state.library.names).distinct() }
 
     Column(modifier) {
         Row(
@@ -51,7 +51,7 @@ fun LibraryPanel(state: EditorState, modifier: Modifier = Modifier) {
                     state.saveToLibrary()
                     libraryEpoch++
                 },
-                modifier = Modifier.height(28.dp),
+                modifier = Modifier.height(48.dp),
             ) {
                 Text("Save current", fontSize = 11.sp)
             }

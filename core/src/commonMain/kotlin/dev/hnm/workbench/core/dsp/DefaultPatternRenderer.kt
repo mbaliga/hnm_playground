@@ -254,6 +254,7 @@ class DefaultPatternRenderer(
         sharpness: Double,
         caps: HapticCapabilities,
     ): List<HapticCommand> {
+        if (intensity <= 0.0) return emptyList()
         // Prefer a native primitive (best fidelity); sharpness selects which.
         val prim = if (caps.supportedPrimitives.isNotEmpty())
             HapticMapping.transientToPrimitive(sharpness, caps.supportedPrimitives) else null
@@ -269,6 +270,7 @@ class DefaultPatternRenderer(
         caps: HapticCapabilities,
         intensityCurve: ParameterCurve?,
     ): List<HapticCommand> {
+        if (e.intensity <= 0.0) return emptyList()
         val shaper = EnvelopeShaper(e.envelope, e.duration)
         if (!caps.hasAmplitudeControl) {
             // Degrade: a single on/off buzz for the held duration (ignore envelope shape).
@@ -313,6 +315,7 @@ class DefaultPatternRenderer(
     }
 
     private fun schedulePrimitive(e: Primitive, caps: HapticCapabilities): List<HapticCommand> {
+        if(e.scale <= 0.0) return emptyList()
         if (e.type in caps.supportedPrimitives) {
             return listOf(PlayPrimitive(e.time, e.type, e.scale.coerceIn(0.0, 1.0).toFloat()))
         }

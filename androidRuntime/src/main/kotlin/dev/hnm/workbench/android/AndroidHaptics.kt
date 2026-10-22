@@ -40,13 +40,6 @@ object AndroidHaptics {
     /** ERM-style motors need ~tens of ms to spin up to a felt level; floor every short pulse to this. */
     private const val MIN_PULSE_MS = 70L
 
-    private val PREDEFINED_EFFECTS = listOf(
-        "CLICK" to VibrationEffect.EFFECT_CLICK,
-        "TICK" to VibrationEffect.EFFECT_TICK,
-        "HEAVY_CLICK" to VibrationEffect.EFFECT_HEAVY_CLICK,
-        "DOUBLE_CLICK" to VibrationEffect.EFFECT_DOUBLE_CLICK,
-    )
-
     fun vibrator(context: Context): Vibrator {
         val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
         return manager.defaultVibrator
@@ -67,7 +60,7 @@ object AndroidHaptics {
             hasVibrator = hasVibrator,
             hasAmplitudeControl = hasAmplitude,
             supportedPrimitives = supported,
-            hasFrequencyControl = false, // Android exposes no public PWLE/frequency API.
+            hasFrequencyControl = false, // This renderer targets API 35; newer envelope APIs are not used.
             actuatorType = actuator,
         )
     }
@@ -114,10 +107,16 @@ object AndroidHaptics {
 
     /** Predefined effects the device explicitly reports as supported (UNKNOWN/NO are omitted). */
     fun supportedEffects(vibrator: Vibrator): List<String> {
-        val support = vibrator.areEffectsSupported(*PREDEFINED_EFFECTS.map { it.second }.toIntArray())
-        return PREDEFINED_EFFECTS.filterIndexed { i, _ ->
+        // Explicit constants preserve Android's @IntDef validation at this platform boundary.
+        val support = vibrator.areEffectsSupported(
+            VibrationEffect.EFFECT_CLICK,
+            VibrationEffect.EFFECT_TICK,
+            VibrationEffect.EFFECT_HEAVY_CLICK,
+            VibrationEffect.EFFECT_DOUBLE_CLICK,
+        )
+        return listOf("CLICK", "TICK", "HEAVY_CLICK", "DOUBLE_CLICK").filterIndexed { i, _ ->
             support.getOrNull(i) == Vibrator.VIBRATION_EFFECT_SUPPORT_YES
-        }.map { it.first }
+        }
     }
 
     /** An honest label that doesn't over-claim ERM when the API simply isn't exposing the LRA. */
@@ -146,12 +145,12 @@ object AndroidHaptics {
         }
         // 1) Native composition primitives.
         if (commands.all { it is PlayPrimitive }) {
-            composePrimitives(commands.filterIsInstance<PlayPrimitive>())?.let { vibrateSafely(vibrator, it, onError) }
+            composePrimitives(vibrator, commands.filterIsInstance<PlayPrimitive>())?.let { vibrateSafely(vibrator, it, onError) }
             return
         }
         // 2) Discrete taps with no primitive support -> OEM-tuned predefined effects, scheduled in time.
-        val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }
-        if (events.isNotEmpty() && events.all { it is Transient || it is Primitive }) {
+        val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }.filter { when(it) { is Transient -> it.intensity>0; is Primitive -> it.scale>0; is Continuous -> it.intensity>0 } }
+        if (!vibrator.hasAmplitudeControl() && events.isNotEmpty() && events.all { it is Transient || it is Primitive }) {
             val base = SystemClock.uptimeMillis()
             events.sortedBy { it.time }.forEach { event ->
                 val effect = predefinedFor(event)
@@ -287,14 +286,17 @@ object AndroidHaptics {
         return VibrationEffect.createWaveform(timings.toLongArray(), amplitudes.toIntArray(), -1)
     }
 
-    private fun composePrimitives(primitives: List<PlayPrimitive>): VibrationEffect? {
+    private fun composePrimitives(vibrator: Vibrator, primitives: List<PlayPrimitive>): VibrationEffect? {
         if (primitives.isEmpty()) return null
         val composition = VibrationEffect.startComposition()
-        var prevAt = 0.0
+        var cursorMs = 0L
         primitives.forEach { cmd ->
-            val delayMs = ((cmd.atSeconds - prevAt) * 1000).toInt().coerceAtLeast(0)
-            composition.addPrimitive(primitiveId(cmd.type), cmd.scale.coerceIn(0f, 1f), delayMs)
-            prevAt = cmd.atSeconds
+            val startMs = (cmd.atSeconds * 1000).toLong()
+            val delayMs = (startMs - cursorMs).coerceAtLeast(0).toInt()
+            val id = primitiveId(cmd.type)
+            composition.addPrimitive(id, cmd.scale.coerceIn(0f, 1f), delayMs)
+            val duration = vibrator.getPrimitiveDurations(id).firstOrNull()?.toLong() ?: 0L
+            cursorMs = maxOf(startMs, cursorMs) + duration
         }
         return composition.compose()
     }
