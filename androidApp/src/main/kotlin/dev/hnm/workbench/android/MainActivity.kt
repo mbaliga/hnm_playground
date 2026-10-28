@@ -179,7 +179,16 @@ class MainActivity : Activity() {
 
         // Procedural splash first: a seed-selected motif whose visual, sound and haptics all come from
         // one pattern, so the intro you feel matches the intro you see. Tap to skip; reveals the player.
-        if (savedInstanceState == null) {
+        // First launch gets the full 10 s HAfx intro (picture from the shared render, sound + touch
+        // from the intro IR on this device's actuator). Every later launch keeps the short motifs.
+        val intro = if (savedInstanceState == null && IntroView.shouldShow(this)) runCatching { IntroView.loadScore(this) }.getOrNull() else null
+        if (intro != null) {
+            val view = IntroView(this)
+            view.onStart = { play(intro) }
+            view.onSkip = { vibrator.cancel(); audio.release() }
+            view.onDone = { IntroView.markSeen(this); setContentView(scroll) }
+            setContentView(view)
+        } else if (savedInstanceState == null) {
             val scene = SplashMotifs.generate((SystemClock.elapsedRealtime() / 500L).toInt())
             val splash = SplashView(this, scene)
             splash.onStart = { play(scene.pattern) }

@@ -6,6 +6,9 @@
 - Android build is gated behind `ENABLE_ANDROID=1` (SDK not always provisioned); default `./gradlew build` stays JVM-only.
 - One backend-agnostic IR (`HapticAudioPattern`) is the spine; render/export seam is swappable per backend.
 
+## Intro (Oct 2026)
+- 10 s HAfx intro sting authored as IR in `tools/intro/score.mjs`; plays on first launch via `IntroView` (silent video + native IR), on the web via the intro player, and as MP4 for store/social. On-device feel not yet owner-verified.
+
 ## Next steps
 - Controller HID backends (M6): SDL rumble + DualSense HID.
 - Multi-device variance (M7): capability probing + graceful degradation across LRA / ERM / wideband actuators.

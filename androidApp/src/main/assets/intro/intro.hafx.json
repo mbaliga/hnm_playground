@@ -1,0 +1,1198 @@
+{
+  "name": "HAfx · Intro",
+  "tracks": [
+    {
+      "type": "haptic",
+      "id": "h-pulse",
+      "name": "Pulse",
+      "events": [
+        {
+          "type": "transient",
+          "time": 0.25,
+          "intensity": 0.85,
+          "sharpness": 0.18
+        },
+        {
+          "type": "transient",
+          "time": 0.47,
+          "intensity": 0.55,
+          "sharpness": 0.1
+        },
+        {
+          "type": "transient",
+          "time": 1.05,
+          "intensity": 0.85,
+          "sharpness": 0.18
+        },
+        {
+          "type": "transient",
+          "time": 1.27,
+          "intensity": 0.55,
+          "sharpness": 0.1
+        },
+        {
+          "type": "transient",
+          "time": 1.6,
+          "intensity": 0.38,
+          "sharpness": 0.3
+        },
+        {
+          "type": "transient",
+          "time": 2.05,
+          "intensity": 0.45,
+          "sharpness": 0.39
+        },
+        {
+          "type": "transient",
+          "time": 2.42,
+          "intensity": 0.52,
+          "sharpness": 0.48
+        },
+        {
+          "type": "transient",
+          "time": 2.72,
+          "intensity": 0.59,
+          "sharpness": 0.57
+        },
+        {
+          "type": "transient",
+          "time": 2.96,
+          "intensity": 0.66,
+          "sharpness": 0.66
+        },
+        {
+          "type": "transient",
+          "time": 3.15,
+          "intensity": 0.73,
+          "sharpness": 0.75
+        },
+        {
+          "type": "transient",
+          "time": 3.3,
+          "intensity": 0.8,
+          "sharpness": 0.84
+        },
+        {
+          "type": "transient",
+          "time": 3.42,
+          "intensity": 0.87,
+          "sharpness": 0.93
+        },
+        {
+          "type": "transient",
+          "time": 5.8,
+          "intensity": 1,
+          "sharpness": 0.6
+        },
+        {
+          "type": "continuous",
+          "time": 5.82,
+          "duration": 0.9,
+          "intensity": 0.9,
+          "sharpness": 0.12,
+          "envelope": {
+            "attack": 0.004,
+            "decay": 0.32,
+            "sustain": 0.35,
+            "release": 0.55
+          }
+        },
+        {
+          "type": "transient",
+          "time": 6.32,
+          "intensity": 0.6,
+          "sharpness": 0.35
+        },
+        {
+          "type": "transient",
+          "time": 6.76,
+          "intensity": 0.4,
+          "sharpness": 0.47
+        },
+        {
+          "type": "transient",
+          "time": 7.14,
+          "intensity": 0.26,
+          "sharpness": 0.59
+        },
+        {
+          "type": "transient",
+          "time": 7.46,
+          "intensity": 0.16,
+          "sharpness": 0.71
+        },
+        {
+          "type": "transient",
+          "time": 8.6,
+          "intensity": 0.45,
+          "sharpness": 0.95
+        },
+        {
+          "type": "transient",
+          "time": 8.68,
+          "intensity": 0.3,
+          "sharpness": 1
+        }
+      ]
+    },
+    {
+      "type": "haptic",
+      "id": "h-rise",
+      "name": "Rise",
+      "events": [
+        {
+          "type": "continuous",
+          "time": 3.45,
+          "duration": 2.1,
+          "intensity": 1,
+          "sharpness": 0.5,
+          "envelope": {
+            "attack": 0.05,
+            "release": 0.02
+          }
+        }
+      ],
+      "curves": [
+        {
+          "parameter": "HAPTIC_INTENSITY",
+          "points": [
+            {
+              "time": 3.45,
+              "value": 0.08
+            },
+            {
+              "time": 4.4,
+              "value": 0.3
+            },
+            {
+              "time": 5.1,
+              "value": 0.7
+            },
+            {
+              "time": 5.5,
+              "value": 1
+            },
+            {
+              "time": 5.55,
+              "value": 1
+            }
+          ],
+          "interpolation": "SMOOTH"
+        },
+        {
+          "parameter": "HAPTIC_SHARPNESS",
+          "points": [
+            {
+              "time": 3.45,
+              "value": 0.15
+            },
+            {
+              "time": 5.55,
+              "value": 0.85
+            }
+          ],
+          "interpolation": "SMOOTH"
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-heart",
+      "name": "Heart",
+      "events": [
+        {
+          "type": "osc",
+          "time": 0.25,
+          "duration": 0.1,
+          "waveform": "SINE",
+          "frequencyHz": 52,
+          "gain": 0.43,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 0.25,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 104,
+          "gain": 0.12,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 0.47,
+          "duration": 0.1,
+          "waveform": "SINE",
+          "frequencyHz": 52,
+          "gain": 0.292,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 0.47,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 104,
+          "gain": 0.077,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 1.05,
+          "duration": 0.1,
+          "waveform": "SINE",
+          "frequencyHz": 52,
+          "gain": 0.43,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 1.05,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 104,
+          "gain": 0.12,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 1.27,
+          "duration": 0.1,
+          "waveform": "SINE",
+          "frequencyHz": 52,
+          "gain": 0.292,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 1.27,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 104,
+          "gain": 0.077,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-pluck",
+      "name": "Mitosis",
+      "events": [
+        {
+          "type": "osc",
+          "time": 1.6,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 293.66,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 1.6,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 587.32,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 1.6,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 60,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.05,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 349.23,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.05,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 698.46,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.05,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 66,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.42,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 440,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.42,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 880,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.42,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 72,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.72,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 523.25,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.72,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 1046.5,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.72,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 78,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.96,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 587.33,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.96,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 1174.66,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 2.96,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 84,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.15,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 698.46,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.15,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 1396.92,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.15,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 90,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.3,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 880,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.3,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 1760,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.3,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 96,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.42,
+          "duration": 0.05,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 1046.5,
+          "gain": 0.224,
+          "envelope": {
+            "attack": 0.002,
+            "decay": 0.03,
+            "sustain": 0.4,
+            "release": 0.28
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3200,
+            "resonance": 2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.42,
+          "duration": 0.04,
+          "waveform": "SINE",
+          "frequencyHz": 2093,
+          "gain": 0.06,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.5
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.42,
+          "duration": 0.06,
+          "waveform": "SINE",
+          "frequencyHz": 102,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.09
+          }
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-pad",
+      "name": "Pad",
+      "events": [
+        {
+          "type": "osc",
+          "time": 0,
+          "duration": 5.5,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 146.83,
+          "gain": 0.138,
+          "envelope": {
+            "attack": 1.4,
+            "release": 0.05
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 400
+          }
+        },
+        {
+          "type": "osc",
+          "time": 0,
+          "duration": 5.5,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 220,
+          "gain": 0.086,
+          "envelope": {
+            "attack": 2.2,
+            "release": 0.05
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 400
+          }
+        }
+      ],
+      "curves": [
+        {
+          "parameter": "AUDIO_FILTER_CUTOFF",
+          "points": [
+            {
+              "time": 0,
+              "value": 260
+            },
+            {
+              "time": 3.4,
+              "value": 700
+            },
+            {
+              "time": 5.55,
+              "value": 2600
+            }
+          ],
+          "interpolation": "SMOOTH"
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-riser",
+      "name": "Riser",
+      "events": [
+        {
+          "type": "osc",
+          "time": 3.45,
+          "duration": 2.1,
+          "waveform": "SAW",
+          "frequencyHz": 73.42,
+          "gain": 0.172,
+          "envelope": {
+            "attack": 0.4,
+            "release": 0.02
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 200,
+            "resonance": 4
+          }
+        },
+        {
+          "type": "osc",
+          "time": 3.45,
+          "duration": 2.1,
+          "waveform": "SAW",
+          "frequencyHz": 73.861,
+          "gain": 0.138,
+          "envelope": {
+            "attack": 0.4,
+            "release": 0.02
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 200,
+            "resonance": 4
+          }
+        }
+      ],
+      "curves": [
+        {
+          "parameter": "AUDIO_FILTER_CUTOFF",
+          "points": [
+            {
+              "time": 3.45,
+              "value": 180
+            },
+            {
+              "time": 4.6,
+              "value": 700
+            },
+            {
+              "time": 5.3,
+              "value": 3200
+            },
+            {
+              "time": 5.55,
+              "value": 6500
+            }
+          ],
+          "interpolation": "SMOOTH"
+        },
+        {
+          "parameter": "AUDIO_PITCH",
+          "points": [
+            {
+              "time": 3.45,
+              "value": 0
+            },
+            {
+              "time": 5.55,
+              "value": 12
+            }
+          ],
+          "interpolation": "SMOOTH"
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-wash",
+      "name": "Wash",
+      "events": [
+        {
+          "type": "osc",
+          "time": 3.45,
+          "duration": 2.1,
+          "waveform": "NOISE",
+          "frequencyHz": 1,
+          "gain": 0.172,
+          "envelope": {
+            "attack": 1.2,
+            "release": 0.02
+          },
+          "filter": {
+            "type": "BANDPASS",
+            "cutoffHz": 500,
+            "resonance": 1.2
+          }
+        }
+      ],
+      "curves": [
+        {
+          "parameter": "AUDIO_FILTER_CUTOFF",
+          "points": [
+            {
+              "time": 3.45,
+              "value": 400
+            },
+            {
+              "time": 5.55,
+              "value": 9000
+            }
+          ],
+          "interpolation": "SMOOTH"
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-drop",
+      "name": "Drop",
+      "events": [
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 0.75,
+          "waveform": "SINE",
+          "frequencyHz": 110,
+          "gain": 0.516,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.6
+          }
+        }
+      ],
+      "curves": [
+        {
+          "parameter": "AUDIO_PITCH",
+          "points": [
+            {
+              "time": 5.8,
+              "value": 0
+            },
+            {
+              "time": 5.88,
+              "value": -10
+            },
+            {
+              "time": 6.5,
+              "value": -24
+            }
+          ],
+          "interpolation": "SMOOTH"
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-impact",
+      "name": "Impact",
+      "events": [
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 0.12,
+          "waveform": "NOISE",
+          "frequencyHz": 1,
+          "gain": 0.31,
+          "envelope": {
+            "attack": 0.001,
+            "decay": 0.05,
+            "sustain": 0.3,
+            "release": 0.45
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 1600,
+            "resonance": 0.9
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 0.03,
+          "waveform": "NOISE",
+          "frequencyHz": 1,
+          "gain": 0.189,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.06
+          },
+          "filter": {
+            "type": "HIGHPASS",
+            "cutoffHz": 3000
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 1.8,
+          "waveform": "SAW",
+          "frequencyHz": 146.83,
+          "gain": 0.069,
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.4,
+            "sustain": 0.55,
+            "release": 1.7
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2200,
+            "resonance": 1.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 1.8,
+          "waveform": "SAW",
+          "frequencyHz": 220,
+          "gain": 0.043,
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.4,
+            "sustain": 0.55,
+            "release": 1.7
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2200,
+            "resonance": 1.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 1.8,
+          "waveform": "SAW",
+          "frequencyHz": 293.66,
+          "gain": 0.043,
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.4,
+            "sustain": 0.55,
+            "release": 1.7
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2200,
+            "resonance": 1.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 1.8,
+          "waveform": "SAW",
+          "frequencyHz": 329.63,
+          "gain": 0.043,
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.4,
+            "sustain": 0.55,
+            "release": 1.7
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2200,
+            "resonance": 1.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 1.8,
+          "waveform": "SAW",
+          "frequencyHz": 440,
+          "gain": 0.043,
+          "envelope": {
+            "attack": 0.006,
+            "decay": 0.4,
+            "sustain": 0.55,
+            "release": 1.7
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2200,
+            "resonance": 1.1
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 1.2,
+          "waveform": "SINE",
+          "frequencyHz": 880,
+          "gain": 0.052,
+          "envelope": {
+            "attack": 0.01,
+            "release": 2.2
+          }
+        },
+        {
+          "type": "osc",
+          "time": 5.8,
+          "duration": 1.2,
+          "waveform": "SINE",
+          "frequencyHz": 1174.66,
+          "gain": 0.039,
+          "envelope": {
+            "attack": 0.02,
+            "release": 2.4
+          }
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-echo",
+      "name": "Echo",
+      "events": [
+        {
+          "type": "osc",
+          "time": 6.32,
+          "duration": 0.04,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 587.33,
+          "gain": 0.138,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.35
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2400
+          }
+        },
+        {
+          "type": "osc",
+          "time": 6.32,
+          "duration": 0.05,
+          "waveform": "SINE",
+          "frequencyHz": 58,
+          "gain": 0.22,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.12
+          }
+        },
+        {
+          "type": "osc",
+          "time": 6.76,
+          "duration": 0.04,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 587.33,
+          "gain": 0.086,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.35
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2400
+          }
+        },
+        {
+          "type": "osc",
+          "time": 6.76,
+          "duration": 0.05,
+          "waveform": "SINE",
+          "frequencyHz": 58,
+          "gain": 0.138,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.12
+          }
+        },
+        {
+          "type": "osc",
+          "time": 7.14,
+          "duration": 0.04,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 587.33,
+          "gain": 0.052,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.35
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2400
+          }
+        },
+        {
+          "type": "osc",
+          "time": 7.14,
+          "duration": 0.05,
+          "waveform": "SINE",
+          "frequencyHz": 58,
+          "gain": 0.083,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.12
+          }
+        },
+        {
+          "type": "osc",
+          "time": 7.46,
+          "duration": 0.04,
+          "waveform": "TRIANGLE",
+          "frequencyHz": 587.33,
+          "gain": 0.031,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.35
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 2400
+          }
+        },
+        {
+          "type": "osc",
+          "time": 7.46,
+          "duration": 0.05,
+          "waveform": "SINE",
+          "frequencyHz": 58,
+          "gain": 0.05,
+          "envelope": {
+            "attack": 0.002,
+            "release": 0.12
+          }
+        }
+      ]
+    },
+    {
+      "type": "audio",
+      "id": "a-chime",
+      "name": "Chime",
+      "events": [
+        {
+          "type": "osc",
+          "time": 8.6,
+          "duration": 0.07,
+          "waveform": "SQUARE",
+          "frequencyHz": 659.25,
+          "gain": 0.077,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.06
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3600
+          }
+        },
+        {
+          "type": "osc",
+          "time": 8.68,
+          "duration": 0.12,
+          "waveform": "SQUARE",
+          "frequencyHz": 880,
+          "gain": 0.077,
+          "envelope": {
+            "attack": 0.001,
+            "release": 0.3
+          },
+          "filter": {
+            "type": "LOWPASS",
+            "cutoffHz": 3600
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "intro.duration": "10.0",
+    "intro.acts": "nucleus:0,mitosis:1.6,rise:3.45,vacuum:5.55,impact:5.8,echo:6.3,settle:8.3,end:10",
+    "intro.divisions": "1.6,2.05,2.42,2.72,2.96,3.15,3.3,3.42",
+    "intro.heartbeats": "0.25,0.47,1.05,1.27",
+    "intro.echoes": "6.32,6.76,7.14,7.46",
+    "intro.chime": "8.6,8.68",
+    "author": "A System of Cells"
+  }
+}

@@ -1,0 +1,570 @@
+<title>HAfx Intro</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* One screen, one stage: the cell is the only object. AMOLED, single dark look by choice. */
+  :root {
+    --void: #000000;
+    --violet: #8E7BFF;
+    --cyan: #08FED5;
+    --ink: #C9C3E6;      /* violet-biased neutral for the little text there is */
+    --ink-dim: #5E587A;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--void); color: var(--ink); font-family: var(--mono);
+    overflow: hidden; -webkit-tap-highlight-color: transparent; user-select: none;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  canvas#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; cursor: pointer; }
+  .hint {
+    position: fixed; left: 0; right: 0; bottom: calc(18vh + env(safe-area-inset-bottom, 0px));
+    text-align: center; font-size: 12px; letter-spacing: 0.32em; text-transform: lowercase;
+    color: var(--ink-dim); pointer-events: none; transition: opacity .4s ease;
+  }
+  .paths {
+    position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    display: flex; align-items: center; gap: 14px; font-size: 10.5px; letter-spacing: 0.14em; color: var(--ink-dim);
+  }
+  .path { display: flex; align-items: center; gap: 6px; transition: color .2s ease; }
+  .path i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid currentColor; display: block; transition: background .08s linear, box-shadow .08s linear; }
+  .path[data-on="1"] { color: var(--ink); }
+  .path[data-on="0"] { opacity: .45; }
+  .info {
+    appearance: none; background: none; border: 1px solid var(--ink-dim); color: var(--ink-dim);
+    width: 20px; height: 20px; border-radius: 50%; font: 500 11px/1 var(--mono); cursor: pointer; padding: 0;
+  }
+  .info:focus-visible, .again:focus-visible { outline: 1px solid var(--cyan); outline-offset: 3px; }
+  .tip {
+    position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+    max-width: min(340px, calc(100vw - 32px)); font-size: 11.5px; line-height: 1.6; color: var(--ink);
+    background: rgba(14, 11, 28, .92); border: 1px solid rgba(142, 123, 255, .25); border-radius: 12px; padding: 12px 14px;
+  }
+  .tip b { color: var(--cyan); font-weight: 500; }
+  .again {
+    position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    appearance: none; background: none; border: 1px solid rgba(142,123,255,.4); color: var(--ink);
+    font: 500 11px/1 var(--mono); letter-spacing: .2em; padding: 9px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .taptic { position: fixed; left: -40px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
+</style>
+
+<canvas id="stage" aria-label="HAfx intro"></canvas>
+<div class="hint" id="hint">tap to feel</div>
+<div class="paths" id="paths" aria-label="Output paths">
+  <span class="path" data-k="sound"><i></i>sound</span>
+  <span class="path" data-k="body"><i></i>body</span>
+  <span class="path" data-k="touch"><i></i>touch</span>
+  <span class="path" data-k="sight"><i></i>sight</span>
+  <button class="info" id="infoBtn" aria-label="How this device feels it" aria-expanded="false">i</button>
+</div>
+<div class="tip" id="tip" hidden></div>
+<button class="again" id="again" hidden>again</button>
+<label class="taptic" id="tapticLabel" aria-hidden="true"><input type="checkbox" switch id="tapticSwitch" tabindex="-1"></label>
+
+<script>
+(() => {
+'use strict';
+// ============================================================================================
+// THE SCORE — HAfx IR (HapticAudioPattern). Injected at build from intro.hafx.json.
+// Sound, haptics and picture all read this one object; nothing is hand-synced.
+// ============================================================================================
+const IR = /*__IR__*/null;
+
+const META = IR.metadata;
+const listOf = (k) => META[k].split(',').map(Number);
+const ACTS = Object.fromEntries(META['intro.acts'].split(',').map((s) => { const [k, v] = s.split(':'); return [k, +v]; }));
+const DIV = listOf('intro.divisions'), HEART = listOf('intro.heartbeats'), ECHO = listOf('intro.echoes'), CHIME = listOf('intro.chime');
+const DUR = +META['intro.duration'];
+
+// ---- IR semantics, mirrored from the Kotlin core (CurveSampler, EnvelopeShaper) -------------
+function sampler(c) {
+  if (!c) return null;
+  const P = c.points.slice().sort((a, b) => a.time - b.time), mode = c.interpolation || 'LINEAR';
+  return (t) => {
+    if (t <= P[0].time) return P[0].value;
+    if (t >= P[P.length - 1].time) return P[P.length - 1].value;
+    let hi = P.findIndex((p) => p.time >= t), lo = hi - 1;
+    const a = P[lo], b = P[hi], u = (t - a.time) / (b.time - a.time);
+    if (mode === 'STEP') return a.value;
+    if (mode === 'LINEAR') return a.value + (b.value - a.value) * u;
+    const p0 = P[Math.max(0, lo - 1)].value, p1 = a.value, p2 = b.value, p3 = P[Math.min(P.length - 1, hi + 1)].value;
+    const u2 = u * u, u3 = u2 * u;
+    return 0.5 * (2 * p1 + (-p0 + p2) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 + (-p0 + 3 * p1 - 3 * p2 + p3) * u3);
+  };
+}
+const curveOf = (track, p) => sampler((track.curves || []).find((c) => c.parameter === p));
+function adsr(e = {}, dur, t) {
+  const a = e.attack || 0, d = e.decay || 0, s = e.sustain ?? 1, r = e.release || 0;
+  if (t < 0) return 0;
+  if (t <= a) return a <= 0 ? 1 : t / a;
+  if (t <= a + d) return d <= 0 ? s : 1 + (s - 1) * ((t - a) / d);
+  if (t <= dur) return s;
+  if (t <= dur + r) return r <= 0 ? 0 : s * (1 - (t - dur) / r);
+  return 0;
+}
+
+// ---- Haptic field: intensity + sharpness at 1 kHz, the shared truth for every touch path ---
+const HZ = 1000, HN = Math.ceil(DUR * HZ) + 1;
+const hI = new Float32Array(HN), hS = new Float32Array(HN);
+const TRANSIENTS = [];
+for (const tr of IR.tracks) {
+  if (tr.type !== 'haptic' || tr.muted) continue;
+  const ic = curveOf(tr, 'HAPTIC_INTENSITY'), sc = curveOf(tr, 'HAPTIC_SHARPNESS');
+  for (const e of tr.events) {
+    if (e.type === 'transient') {
+      TRANSIENTS.push({ t: e.time, i: e.intensity, s: sc ? sc(e.time) : e.sharpness });
+      for (let k = 0; k < 140; k++) {
+        const n = Math.round(e.time * HZ) + k; if (n >= HN) break;
+        const v = e.intensity * Math.exp(-k / 34);
+        hI[n] = 1 - (1 - hI[n]) * (1 - v); hS[n] = Math.max(hS[n], (sc ? sc(e.time) : e.sharpness) * Math.min(1, v * 3));
+      }
+    } else if (e.type === 'continuous') {
+      const len = e.duration + ((e.envelope || {}).release || 0);
+      for (let n = Math.round(e.time * HZ); n < Math.min(HN, Math.round((e.time + len) * HZ)); n++) {
+        const t = n / HZ, v = e.intensity * (ic ? ic(t) : 1) * adsr(e.envelope, e.duration, t - e.time);
+        hI[n] = 1 - (1 - hI[n]) * (1 - v); hS[n] = Math.max(hS[n], (sc ? sc(t) : e.sharpness) * Math.min(1, v * 3));
+      }
+    }
+  }
+}
+TRANSIENTS.sort((a, b) => a.t - b.t);
+for (let n = 0; n < HN; n++) { hI[n] = Math.min(1, hI[n]); hS[n] = Math.min(1, hS[n]); }
+const hapticAt = (t) => { const n = Math.round(t * HZ); return n < 0 || n >= HN ? 0 : hI[n]; };
+const sharpAt = (t) => { const n = Math.round(t * HZ); return n < 0 || n >= HN ? 0 : hS[n]; };
+
+// ============================================================================================
+// AUDIO — the IR rendered to a Web Audio graph (works for live and offline contexts)
+// ============================================================================================
+const WAVE = { SINE: 'sine', SQUARE: 'square', SAW: 'sawtooth', TRIANGLE: 'triangle' };
+function scheduleCurve(param, fn, t0, t1, at, step = 0.01) {
+  const n = Math.max(2, Math.ceil((t1 - t0) / step) + 1), arr = new Float32Array(n);
+  for (let i = 0; i < n; i++) arr[i] = fn(t0 + (i / (n - 1)) * (t1 - t0));
+  param.setValueAtTime(arr[0], at + t0);
+  param.setValueCurveAtTime(arr, at + t0 + 1e-4, Math.max(0.002, t1 - t0 - 1e-4));
+}
+function buildAudio(ctx, at, opts) {
+  const out = ctx.createGain(); out.gain.value = 0.82;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -6; comp.knee.value = 6; comp.ratio.value = 8; comp.attack.value = 0.002; comp.release.value = 0.12;
+  if (opts.raw) out.connect(ctx.destination); else out.connect(comp).connect(ctx.destination);
+  if (opts.raw) out.gain.value = 1;
+  const noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+  { const d = noise.getChannelData(0); let s = 1234567; for (let i = 0; i < d.length; i++) { s = (s * 1103515245 + 12345) & 0x7fffffff; d[i] = s / 0x3fffffff - 1; } }
+
+  if (opts.sound !== false) for (const tr of IR.tracks) {
+    if (tr.type !== 'audio' || tr.muted) continue;
+    const bus = ctx.createGain(); bus.connect(out);
+    const gC = curveOf(tr, 'AUDIO_GAIN'), pC = curveOf(tr, 'AUDIO_PITCH'), fC = curveOf(tr, 'AUDIO_FILTER_CUTOFF');
+    if (gC) scheduleCurve(bus.gain, gC, 0, DUR, at);
+    for (const e of tr.events) {
+      const env = e.envelope || {}, end = e.time + e.duration + (env.release || 0);
+      let src;
+      if (e.waveform === 'NOISE') { src = ctx.createBufferSource(); src.buffer = noise; src.loop = true; }
+      else {
+        src = ctx.createOscillator(); src.type = WAVE[e.waveform]; src.frequency.value = e.frequencyHz;
+        if (pC) scheduleCurve(src.detune, (t) => pC(t) * 100, e.time, end, at);
+      }
+      let node = src;
+      if (e.filter) {
+        const f = ctx.createBiquadFilter(); f.type = e.filter.type.toLowerCase();
+        const q = e.filter.resonance ?? 0.7;
+        f.Q.value = f.type === 'bandpass' ? q : 20 * Math.log10(Math.max(1e-4, q)); // core Q is linear RBJ; Web Audio LP/HP Q is dB
+        f.frequency.value = e.filter.cutoffHz;
+        if (fC) scheduleCurve(f.frequency, (t) => Math.min(ctx.sampleRate * 0.45, fC(t)), e.time, end, at);
+        node.connect(f); node = f;
+      }
+      const g = ctx.createGain(), A = at + e.time;
+      const a = env.attack || 0, d = env.decay || 0, s = env.sustain ?? 1, r = env.release || 0, dur = e.duration;
+      g.gain.setValueAtTime(0, A);
+      if (a > 0) g.gain.linearRampToValueAtTime(e.gain, A + a); else g.gain.setValueAtTime(e.gain, A);
+      if (d > 0) g.gain.linearRampToValueAtTime(e.gain * s, A + Math.min(dur, a + d));
+      g.gain.setValueAtTime(e.gain * (dur >= a + d ? s : 1), A + Math.max(dur, a + d));
+      if (r > 0) g.gain.linearRampToValueAtTime(0, A + Math.max(dur, a + d) + r); else g.gain.setValueAtTime(0, A + dur);
+      node.connect(g).connect(bus);
+      src.start(A); src.stop(at + end + 0.02);
+    }
+  }
+
+  // BODY — the haptic field sonified as felt bass. 46 Hz fundamental for subs, chassis and
+  // transducers; 92/138 Hz harmonics so small phone speakers imply the fundamental (missing-
+  // fundamental effect). This is the path that reaches a device with no motor at all.
+  if (opts.body > 0) {
+    const env = ctx.createGain(); env.gain.value = 0; env.connect(out);
+    const n = Math.ceil(DUR * 250) + 1, arr = new Float32Array(n);
+    for (let i = 0; i < n; i++) arr[i] = opts.body * Math.pow(hapticAt(i / 250), 1.15);
+    env.gain.setValueAtTime(0, at);
+    env.gain.setValueCurveAtTime(arr, at + 1e-3, DUR);
+    [[46, 1], [92, 0.42], [138, 0.2]].forEach(([f, l]) => {
+      const o = ctx.createOscillator(); o.frequency.value = f; const g = ctx.createGain(); g.gain.value = l;
+      o.connect(g).connect(env); o.start(at); o.stop(at + DUR + 0.05);
+    });
+  }
+  return out;
+}
+
+// ============================================================================================
+// PICTURE — cells. Analytic in t (seekable), so live playback and offline frames are identical.
+// ============================================================================================
+const TAU = Math.PI * 2;
+const VIOLET = [142, 123, 255], CYAN = [8, 254, 213];
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, u) => a + (b - a) * u;
+const ease = (u) => (u = clamp(u), u * u * (3 - 2 * u));
+const easeOut = (u) => 1 - Math.pow(1 - clamp(u), 3);
+const easeIn = (u) => Math.pow(clamp(u), 2.6);
+const hash = (i) => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const vnoise = (x, seed) => { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return lerp(hash(i + seed * 97.13), hash(i + 1 + seed * 97.13), u) * 2 - 1; };
+const mix = (k, a = 1) => `rgba(${Math.round(lerp(VIOLET[0], CYAN[0], k))},${Math.round(lerp(VIOLET[1], CYAN[1], k))},${Math.round(lerp(VIOLET[2], CYAN[2], k))},${a})`;
+
+// Generations: each division doubles the colony; daughters of cell p are 2p and 2p+1,
+// relaxed inside the unit disk so lineage stays spatially nested.
+const GEN = [[{ x: 0, y: 0 }]], RAD = [Math.sqrt(0.82)];
+for (let g = 1; g <= DIV.length; g++) {
+  const N = 1 << g, rd = Math.sqrt(0.82 / N), prev = GEN[g - 1], pts = [];
+  prev.forEach((p, i) => {
+    const ang = hash(g * 31 + i * 7.3) * Math.PI;
+    const dx = Math.cos(ang) * rd * 0.9, dy = Math.sin(ang) * rd * 0.9;
+    pts.push({ x: p.x + dx, y: p.y + dy }, { x: p.x - dx, y: p.y - dy });
+  });
+  for (let it = 0; it < 90; it++) {
+    for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+      const a = pts[i], b = pts[j]; let dx = b.x - a.x, dy = b.y - a.y; const d = Math.hypot(dx, dy) || 1e-6, m = 2 * rd * 1.02;
+      if (d < m) { const k = (m - d) / d * 0.5; dx *= k; dy *= k; a.x -= dx; a.y -= dy; b.x += dx; b.y += dy; }
+    }
+    for (const p of pts) { const d = Math.hypot(p.x, p.y), lim = 1 - rd; if (d > lim) { p.x *= lim / d; p.y *= lim / d; } }
+  }
+  GEN.push(pts); RAD.push(rd);
+}
+const LAST = GEN.length - 1, COLONY = GEN[LAST];
+
+// Wordmark: monoline cellular letterforms, cap height = 1 unit. Sampled to a hex lattice.
+const GLYPHS = [
+  { w: 0.64, d: (c) => { c.moveTo(0, 0); c.lineTo(0, 1); c.moveTo(0.64, 0); c.lineTo(0.64, 1); c.moveTo(0, 0.5); c.lineTo(0.64, 0.5); } },
+  { w: 0.74, d: (c) => { c.moveTo(0, 1); c.lineTo(0.37, 0); c.lineTo(0.74, 1); c.moveTo(0.17, 0.64); c.lineTo(0.57, 0.64); } },
+  { w: 0.44, d: (c) => { c.moveTo(0.12, 1); c.lineTo(0.12, 0.27); c.arc(0.3, 0.27, 0.18, Math.PI, Math.PI * 1.78); c.moveTo(0, 0.43); c.lineTo(0.38, 0.43); } },
+  { w: 0.58, d: (c) => { c.moveTo(0, 0.43); c.lineTo(0.58, 1); c.moveTo(0.58, 0.43); c.lineTo(0, 1); } },
+];
+const GAP = 0.24, STROKE = 0.17;
+const WM_W = GLYPHS.reduce((s, g) => s + g.w, 0) + GAP * (GLYPHS.length - 1);
+const WORD = (() => {
+  const S = 400, pad = 0.2, cv = document.createElement('canvas');
+  cv.width = Math.ceil((WM_W + pad * 2) * S); cv.height = Math.ceil((1 + pad * 2) * S);
+  const c = cv.getContext('2d', { willReadFrequently: true });
+  c.setTransform(S, 0, 0, S, pad * S, pad * S); c.lineWidth = STROKE; c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = '#fff';
+  let x = 0; for (const g of GLYPHS) { c.save(); c.translate(x, 0); c.beginPath(); g.d(c); c.stroke(); c.restore(); x += g.w + GAP; }
+  const img = c.getImageData(0, 0, cv.width, cv.height).data;
+  const inside = (ux, uy) => { const px = Math.round((ux + pad) * S), py = Math.round((uy + pad) * S); return px >= 0 && py >= 0 && px < cv.width && py < cv.height && img[(py * cv.width + px) * 4] > 128; };
+  const sample = (s) => {
+    const pts = [], h = s * Math.sqrt(3) / 2;
+    for (let row = 0, y = -pad; y < 1 + pad; y += h, row++) for (let x0 = -pad + (row % 2) * s / 2; x0 < WM_W + pad; x0 += s) if (inside(x0, y)) pts.push({ x: x0 - WM_W / 2, y: y - 0.5 });
+    return pts;
+  };
+  let lo = 0.03, hi = 0.2, best = null;
+  for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2, p = sample(m); best = { s: m, p }; if (p.length > COLONY.length) lo = m; else hi = m; }
+  return best;
+})();
+const WPTS = WORD.p, CELL_W = WORD.s;
+// Assign colony cells to letter cells by angle, so the burst sprays radially without tangling.
+const byAngle = (arr, f) => arr.map((p, i) => ({ i, a: Math.atan2(f(p).y, f(p).x) })).sort((a, b) => a.a - b.a).map((o) => o.i);
+const colonyOrder = byAngle(COLONY, (p) => p);
+const targetOrder = byAngle(WPTS, (p) => ({ x: p.x / WM_W, y: p.y }));
+const SOURCE = new Array(WPTS.length);
+targetOrder.forEach((ti, r) => { SOURCE[ti] = colonyOrder[Math.floor(r * COLONY.length / WPTS.length)]; });
+const WMAXD = Math.max(...WPTS.map((p) => Math.hypot(p.x, p.y)));
+
+// Pre-rendered glow sprites
+const sprite = (rgb) => {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  const g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, `rgba(${rgb},0.9)`); g.addColorStop(0.25, `rgba(${rgb},0.35)`); g.addColorStop(1, `rgba(${rgb},0)`);
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128); return c;
+};
+const GLOW_V = sprite(VIOLET.join(',')), GLOW_C = sprite(CYAN.join(','));
+
+function drawCell(c, x, y, r, k, lum, seed, t, nucleus = 0.27) {
+  if (r < 0.4) return;
+  const p1 = hash(seed) * TAU, p2 = hash(seed + 9) * TAU, n = 14;
+  c.beginPath();
+  for (let i = 0; i <= n + 1; i++) {
+    const th = (i % n) / n * TAU;
+    const rr = r * (1 + 0.055 * Math.sin(3 * th + p1 + t * 1.7) + 0.035 * Math.sin(5 * th + p2 - t * 2.3));
+    const px = x + Math.cos(th) * rr, py = y + Math.sin(th) * rr;
+    if (i === 0) c.moveTo(px, py);
+    else { const thp = ((i - 1) % n) / n * TAU; const rp = r * (1 + 0.055 * Math.sin(3 * thp + p1 + t * 1.7) + 0.035 * Math.sin(5 * thp + p2 - t * 2.3));
+      const qx = x + Math.cos(thp) * rp, qy = y + Math.sin(thp) * rp; c.quadraticCurveTo(qx, qy, (qx + px) / 2, (qy + py) / 2); }
+  }
+  c.closePath();
+  c.fillStyle = mix(k, 0.07 + 0.16 * lum); c.fill();
+  c.lineWidth = Math.max(1, r * 0.085); c.strokeStyle = mix(k, clamp(0.45 + 0.55 * lum)); c.stroke();
+  const nx = x + Math.cos(p1 + t * 0.6) * r * 0.12, ny = y + Math.sin(p1 + t * 0.6) * r * 0.12;
+  c.beginPath(); c.arc(nx, ny, r * nucleus, 0, TAU);
+  c.fillStyle = mix(k, clamp(0.55 + 0.45 * lum)); c.fill();
+}
+
+const RM = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function drawFrame(c, W, H, t, o = {}) {
+  const U = Math.min(W, H), cx = W / 2, cy = H / 2, I = hapticAt(t), tw = o.wob ?? t;
+  const shake = o.motion !== false && !RM;
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  c.fillStyle = '#000'; c.fillRect(0, 0, W, H);
+
+  // master fade (in at start; out at end for video/app, hold for the web)
+  let master = clamp(t / 0.35 + 0.25);
+  if (o.fadeOut) master *= clamp((DUR - t) / 0.55);
+  if (o.idle) master = 1;
+
+  // subsurface: the floor breathes with the haptic field (the always-on visual proxy)
+  const bg = c.createRadialGradient(cx, cy, 0, cx, cy, U * 0.9);
+  bg.addColorStop(0, mix(t > ACTS.impact ? 0.8 : 0.15, (0.05 + 0.22 * I) * master)); bg.addColorStop(1, 'rgba(0,0,0,0)');
+  c.fillStyle = bg; c.fillRect(0, 0, W, H);
+
+  // shake = the haptic field made visible
+  if (shake && I > 0.02) {
+    const a = Math.pow(I, 1.6) * U * 0.022;
+    c.translate(vnoise(t * 47, 1) * a, vnoise(t * 47, 2) * a);
+  }
+
+  const Ro = U * 0.2;
+  c.globalAlpha = master;
+
+  if (t < ACTS.impact) {
+    // ---------------------------------------------- colony phases (nucleus → mitosis → rise → vacuum)
+    let g = 0; while (g < DIV.length && t >= DIV[g]) g++;
+    let prog = 1;
+    if (g > 0) { const a = t - DIV[g - 1], next = g < DIV.length ? DIV[g] - DIV[g - 1] : 0.4; prog = easeOut(a / Math.min(0.32, next * 0.85)); }
+    const rise = clamp((t - ACTS.rise) / (ACTS.vacuum - ACTS.rise)), vac = clamp((t - ACTS.vacuum) / (ACTS.impact - ACTS.vacuum));
+    const scale = (1 - 0.1 * ease(rise)) * (1 - 0.95 * easeIn(vac));
+    const spin = 3.4 * Math.pow(rise, 2.2) + 2.5 * vac;
+    const lum = clamp(0.25 + 0.85 * I + 0.3 * rise) * (1 - 0.55 * vac);
+    const pts = GEN[g], prev = g > 0 ? GEN[g - 1] : pts;
+    const heart = t < DIV[0] ? I : 0;
+    c.globalCompositeOperation = 'lighter';
+    for (let j = 0; j < pts.length; j++) {
+      const P = pts[j], Q = g > 0 ? prev[j >> 1] : P;
+      let x = lerp(Q.x, P.x, prog), y = lerp(Q.y, P.y, prog);
+      const dr = Math.hypot(x, y), th = spin * (1.35 - 0.7 * dr);
+      [x, y] = [x * Math.cos(th) - y * Math.sin(th), x * Math.sin(th) + y * Math.cos(th)];
+      const jit = (0.006 + 0.02 * I * rise) * (shake ? 1 : 0);
+      x += vnoise(t * 3 + j, 3) * jit; y += vnoise(t * 3 + j, 4) * jit;
+      const r = Ro * scale * lerp(g > 0 ? RAD[g - 1] * 0.78 : RAD[0], RAD[g], prog) * (1 + 0.07 * heart);
+      const px = cx + x * Ro * scale, py = cy + y * Ro * scale, k = clamp(0.5 + (x * 0.8 - y * 0.6) * 0.42);
+      if (lum > 0.35 || heart > 0.1) { c.globalAlpha = master * clamp((lum - 0.2) * 0.6 + heart * 0.5); const s = r * 3.4, ga = c.globalAlpha; c.globalAlpha = ga * (1 - k); c.drawImage(GLOW_V, px - s, py - s, s * 2, s * 2); c.globalAlpha = ga * k; c.drawImage(GLOW_C, px - s, py - s, s * 2, s * 2); c.globalAlpha = master; }
+      drawCell(c, px, py, r, k, lum, j * 13 + g, tw, g === 0 ? 0.3 + 0.05 * heart : 0.27);
+    }
+    // inverse shockwave: the vacuum pulls a ring inward
+    if (vac > 0) {
+      c.globalCompositeOperation = 'lighter';
+      c.beginPath(); c.arc(cx, cy, U * 0.75 * (1 - easeIn(vac)), 0, TAU);
+      c.lineWidth = 1.5 + 4 * vac; c.strokeStyle = mix(0.9, 0.5 * vac * master); c.stroke();
+    }
+  } else {
+    // ---------------------------------------------- impact → wordmark → echoes → settle
+    const tau = t - ACTS.impact;
+    const capPx = Math.min(W * 0.74 / WM_W, H * 0.24);
+    const wy = cy - capPx * 0.12, rw = CELL_W * capPx * 0.56;
+    // the burst: chromatic ghosts first, then the cells
+    const draws = [];
+    for (let j = 0; j < WPTS.length; j++) {
+      const T = WPTS[j], src = COLONY[SOURCE[j]];
+      const delay = 0.05 * Math.hypot(T.x, T.y) / WMAXD, u = Math.max(0, tau - delay);
+      const q = 1 - Math.exp(-7 * u) * Math.cos(12 * u);
+      const sx = cx + src.x * Ro * 0.05, sy = cy + src.y * Ro * 0.05;
+      const tx = cx + T.x * capPx, ty = wy + T.y * capPx;
+      let x = lerp(sx, tx, q), y = lerp(sy, ty, q);
+      // echoes: a wave crossing the letters left → right
+      let bump = 0;
+      ECHO.forEach((te, i) => { const a = t - te; if (a > -0.1 && a < 0.6) { const front = -WM_W / 2 - 0.3 + a * (WM_W + 0.6) / 0.38; bump += [1, 0.7, 0.5, 0.35][i] * Math.exp(-Math.pow((T.x - front) / 0.18, 2)); } });
+      const breathe = t > ACTS.settle || o.idle ? 0.03 * Math.sin(tw * 1.4 + T.x * 2) : 0;
+      y -= bump * capPx * 0.035;
+      const r = rw * clamp(u * 9) * (1 + 0.32 * bump + breathe);
+      const k = clamp(0.5 + (T.x / WM_W) * 0.9 - T.y * 0.25);
+      const lum = clamp(0.52 + 0.8 * Math.exp(-tau / 0.5) + 0.6 * bump);
+      draws.push([x, y, r, k, lum, j]);
+    }
+    c.globalCompositeOperation = 'lighter';
+    if (tau < 0.4 && shake) {
+      const off = U * 0.018 * Math.exp(-tau / 0.12);
+      c.globalAlpha = master * 0.55;
+      for (const d of draws) { c.drawImage(GLOW_V, d[0] - off - d[2] * 1.6, d[1] - d[2] * 1.6, d[2] * 3.2, d[2] * 3.2); c.drawImage(GLOW_C, d[0] + off - d[2] * 1.6, d[1] - d[2] * 1.6, d[2] * 3.2, d[2] * 3.2); }
+      c.globalAlpha = master;
+    }
+    for (const d of draws) {
+      if (d[4] > 0.45) { const ga = master * (d[4] - 0.35) * 0.5, s = d[2] * 3; c.globalAlpha = ga * (1 - d[3]); c.drawImage(GLOW_V, d[0] - s, d[1] - s, s * 2, s * 2); c.globalAlpha = ga * d[3]; c.drawImage(GLOW_C, d[0] - s, d[1] - s, s * 2, s * 2); c.globalAlpha = master; }
+      drawCell(c, d[0], d[1], d[2], d[3], d[4], d[5] * 7 + 3, tw);
+    }
+    // shockwave
+    if (tau < 0.9) {
+      c.beginPath(); c.arc(cx, cy, U * 0.06 + tau * U * 1.4, 0, TAU);
+      c.lineWidth = 2 + 10 * Math.exp(-tau / 0.15); c.strokeStyle = mix(0.85, 0.7 * (1 - tau / 0.9) * master); c.stroke();
+    }
+    // tagline, typed on with the chime
+    const tag = 'feel the sound';
+    const shown = o.idle ? tag.length : Math.floor(clamp((t - CHIME[0]) / 0.28) * tag.length);
+    if (shown > 0) {
+      c.globalCompositeOperation = 'source-over';
+      const fs = Math.max(12, capPx * 0.13);
+      c.font = `400 ${fs}px "IBM Plex Mono", ui-monospace, Menlo, monospace`;
+      c.textAlign = 'center'; c.textBaseline = 'top';
+      if ('letterSpacing' in c) c.letterSpacing = `${fs * 0.42}px`;
+      c.fillStyle = `rgba(201,195,230,${0.85 * master})`;
+      c.fillText(tag.slice(0, shown), cx + fs * 0.21, wy + capPx * 0.5 + capPx * 0.42);
+      if ('letterSpacing' in c) c.letterSpacing = '0px';
+    }
+    // impact flash
+    if (tau < 0.3) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalCompositeOperation = 'lighter'; c.globalAlpha = 1; c.fillStyle = `rgba(190,255,245,${0.55 * Math.exp(-tau / 0.05) * master})`; c.fillRect(0, 0, W, H); }
+  }
+  c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1; c.setTransform(1, 0, 0, 1, 0, 0);
+  // reduced motion still gets the haptic as light: a luminance lift instead of a shake
+  if (!shake && I > 0.05) { c.fillStyle = `rgba(160,150,255,${0.12 * I * master})`; c.fillRect(0, 0, W, H); }
+}
+
+// ============================================================================================
+// OFFLINE RENDER API (used by the MP4 renderer; harmless in the page)
+// ============================================================================================
+function wavBase64(buf) {
+  const ch = buf.numberOfChannels, n = buf.length, sr = buf.sampleRate, ab = new ArrayBuffer(44 + n * ch * 2), v = new DataView(ab);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * ch * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true);
+  v.setUint32(24, sr, true); v.setUint32(28, sr * ch * 2, true); v.setUint16(32, ch * 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * ch * 2, true);
+  const data = [...Array(ch)].map((_, i) => buf.getChannelData(i));
+  let o = 44; for (let i = 0; i < n; i++) for (let k = 0; k < ch; k++) { v.setInt16(o, clamp(data[k][i], -1, 1) * 32767, true); o += 2; }
+  let s = ''; const b = new Uint8Array(ab); for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+// navigator.vibrate is on/off only, so the haptic field becomes a PWM pattern (20 ms frames,
+// duty = intensity) plus a guaranteed pulse per transient. Re-issued in overlapping 600 ms
+// chunks (Chrome caps patterns at ~99 entries), each call replacing the last.
+function vibrateChunk(t0, span = 0.6) {
+  const ms = Math.round(span * 1000), on = new Uint8Array(ms);
+  for (let f = 0; f < ms; f += 20) {
+    let I = 0; for (let k = 0; k < 20; k++) I = Math.max(I, hapticAt(t0 + (f + k) / 1000));
+    const duty = I < 0.06 ? 0 : Math.round(Math.max(5, Math.pow(I, 0.8) * 20));
+    for (let k = 0; k < duty && f + k < ms; k++) on[f + k] = 1;
+  }
+  for (const tr of TRANSIENTS) { const a = Math.round((tr.t - t0) * 1000); if (a >= -40 && a < ms) for (let k = Math.max(0, a); k < Math.min(ms, a + 10 + 32 * tr.i); k++) on[k] = 1; }
+  // motors can't render gaps shorter than ~6 ms; fold them into the surrounding pulse
+  for (let i = 1, gap = 0; i < ms; i++) { if (!on[i]) gap++; else { if (gap > 0 && gap < 6 && on[i - gap - 1]) on.fill(1, i - gap, i); gap = 0; } }
+  const pat = []; let cur = 1, run = 0;
+  for (let i = 0; i < ms; i++) { if (on[i] === cur) run++; else { pat.push(run); cur = on[i]; run = 1; } }
+  pat.push(run); if (pat.length > 98) pat.length = 98;
+  return pat;
+}
+window.HAFX = {
+  vibrateChunk,
+  ir: IR, duration: DUR, hapticAt, sharpAt, transients: TRANSIENTS, wordCells: WPTS.length,
+  drawTo(canvas, t, opts) { drawFrame(canvas.getContext('2d'), canvas.width, canvas.height, t, opts); },
+  async renderAudio(sr = 48000, body = 0.45, sound = true, raw = false) {
+    const ctx = new OfflineAudioContext(2, Math.ceil(sr * DUR), sr);
+    buildAudio(ctx, 0, { body, sound, raw });
+    const buf = await ctx.startRendering();
+    let peak = 0; const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    return { wav: wavBase64(buf), peak };
+  },
+};
+if (window.__HAFX_RENDER__) return;
+
+// ============================================================================================
+// LIVE PLAYER — one audio clock; touch paths cascade by what this device has
+// ============================================================================================
+const cv = document.getElementById('stage'), ctx2 = cv.getContext('2d');
+const hint = document.getElementById('hint'), again = document.getElementById('again'), tip = document.getElementById('tip'), infoBtn = document.getElementById('infoBtn');
+const tapticLabel = document.getElementById('tapticLabel');
+let W = 0, H = 0, DPR = 1;
+function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); W = Math.round(innerWidth * DPR); H = Math.round(innerHeight * DPR); cv.width = W; cv.height = H; }
+addEventListener('resize', resize); resize();
+
+const ua = navigator.userAgent;
+const isIOS = /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+const coarse = matchMedia('(pointer: coarse)').matches;
+const canVibrate = typeof navigator.vibrate === 'function' && coarse;
+const pads = () => [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter((g) => g && g.vibrationActuator);
+const P = { sound: true, body: true, touch: false, sight: true };
+const touchKind = () => (pads().length ? 'gamepad' : canVibrate ? 'vibrate' : isIOS ? 'taptic' : null);
+
+function paintPaths(I) {
+  P.touch = !!touchKind();
+  for (const el of document.querySelectorAll('.path')) {
+    const k = el.dataset.k, on = P[k]; el.dataset.on = on ? '1' : '0';
+    const i = el.querySelector('i'), lvl = on ? (k === 'sound' ? Math.min(1, I + 0.2) : I) : 0;
+    i.style.background = lvl > 0.04 ? `rgba(8,254,213,${lvl})` : 'transparent';
+    i.style.boxShadow = lvl > 0.3 ? `0 0 ${8 * lvl}px rgba(8,254,213,${lvl})` : 'none';
+  }
+}
+function tipText() {
+  const k = touchKind();
+  const touch = k === 'gamepad' ? '<b>touch</b> · dual rumble on your controller, low motor for weight, high motor for edge.'
+    : k === 'vibrate' ? '<b>touch</b> · your phone motor, pulse-width shaped to follow the score.'
+    : k === 'taptic' ? '<b>touch</b> · taptic ticks on the beats (iOS 18+ Safari, best effort).'
+    : '<b>touch</b> · no motor found here. Plug in a controller to add rumble.';
+  return `<b>sound</b> · the score.<br><b>body</b> · the haptic track as bass you feel through speakers, chassis or a desk.<br>${touch}<br><b>sight</b> · the same track as light and shake.`;
+}
+infoBtn.addEventListener('click', (e) => { e.stopPropagation(); tip.hidden = !tip.hidden; infoBtn.setAttribute('aria-expanded', String(!tip.hidden)); if (!tip.hidden) tip.innerHTML = tipText(); });
+
+// ---- touch paths --------------------------------------------------------------------------
+let tapticLast = -1;
+function taptic() { const n = performance.now(); if (n - tapticLast < 28) return; tapticLast = n; try { tapticLabel.click(); } catch (_) {} }
+
+// ---- playback -----------------------------------------------------------------------------
+let ac = null, startAt = 0, playing = false, lastT = -1, nextChunk = 0, nextT = 0, raf = 0, tickAccum = 0;
+const heard = () => ac.currentTime - (ac.outputLatency || ac.baseLatency || 0) - startAt;
+
+async function play() {
+  if (playing) return;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (_) {} // iOS: play past the silent switch
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  await ac.resume();
+  const k = touchKind();
+  const body = k === 'vibrate' || k === 'gamepad' ? 0.22 : 0.5; // no motor? lean on bass
+  startAt = ac.currentTime + 0.12;
+  buildAudio(ac, startAt, { body });
+  playing = true; lastT = -1; nextChunk = 0; nextT = 0; tickAccum = 0;
+  hint.style.opacity = '0'; again.hidden = true;
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
+}
+// Touch is dispatched from a 10 ms timer as well as rAF so a dropped frame never drops a beat.
+setInterval(() => { if (playing) touchTick(heard()); }, 10);
+function touchTick(t) {
+  if (t < -0.05 || t > DUR + 0.05) return;
+  const k = touchKind();
+  // 30 ms lead covers motor spin-up; each chunk is cut from 'now', so a stalled tab can't drift it.
+  if (k === 'vibrate' && t >= nextChunk) { navigator.vibrate(vibrateChunk(Math.max(0, t + 0.03))); nextChunk = t + 0.5; }
+  if (k === 'gamepad' && t >= nextT) {
+    const I = hapticAt(t), S = sharpAt(t);
+    for (const g of pads()) g.vibrationActuator.playEffect('dual-rumble', { startDelay: 0, duration: 60, strongMagnitude: clamp(I * (1 - 0.6 * S)), weakMagnitude: clamp(I * (0.3 + 0.7 * S)) }).catch(() => {});
+    nextT = t + 0.04;
+  }
+  if (k === 'taptic') {
+    for (const tr of TRANSIENTS) if (tr.i >= 0.25 && tr.t > lastT && tr.t <= t) taptic();
+    const I = hapticAt(t); // a tick train approximates the sustained rise
+    if (I > 0.2 && t > ACTS.rise && t < ACTS.vacuum) { tickAccum += (t - Math.max(lastT, ACTS.rise)) * (6 + 24 * I); if (tickAccum >= 1) { tickAccum = 0; taptic(); } }
+  }
+  lastT = t;
+}
+function loop() {
+  const t = playing ? heard() : 0;
+  if (playing && t > DUR) { playing = false; again.hidden = false; }
+  drawFrame(ctx2, W, H, playing ? Math.max(0, t) : (lastT > 0 ? DUR : 0.0), { idle: !playing && lastT > 0, motion: true, wob: playing ? undefined : performance.now() / 1000 });
+  paintPaths(playing ? hapticAt(t) : 0);
+  raf = requestAnimationFrame(loop);
+}
+// idle: a single breathing cell waits for the gesture that unlocks sound and touch
+function idleLoop() {
+  if (playing || lastT > 0) return;
+  const t = performance.now() / 1000;
+  drawFrame(ctx2, W, H, 0.2, { motion: false, wob: t });
+  requestAnimationFrame(idleLoop);
+}
+idleLoop(); paintPaths(0);
+cv.addEventListener('click', () => { if (!playing) { tip.hidden = true; play(); } });
+again.addEventListener('click', (e) => { e.stopPropagation(); play(); });
+addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'Enter') && document.activeElement === document.body) { e.preventDefault(); play(); } });
+addEventListener('gamepadconnected', () => paintPaths(0));
+})();
+</script>
