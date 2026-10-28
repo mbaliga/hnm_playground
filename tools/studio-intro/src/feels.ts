@@ -225,6 +225,18 @@ export class Feels {
     return hit;
   }
 
+  /** the daughters' membrane snap (the groove's backbeat) */
+  snap(at: number, amt = 1) {
+    const f = this.f;
+    f.hiss(at, 'bandpass', 1500, 1.1, 0.3 * amt, 0.001, 0.09); f.glide(at, 260, 150, 0.04, 0.22 * amt, 0.09); f.hiss(at, 'highpass', 3000, 0.7, 0.08 * amt, 0.001, 0.16, f.wet);
+    f.bus.transient(at, 0.62 * amt, 0.58);
+  }
+  /** cilia flick — the smallest, sharpest thing you can feel */
+  cilia(at: number, amt = 1) {
+    this.f.hiss(at, 'highpass', 7200, 1, 0.07 * amt, 0.0005, 0.025); this.f.ping(at, 5200, 0.015 * amt, 0.02);
+    this.f.bus.transient(at, 0.24 * amt, 0.96);
+  }
+
   /** transport key */
   key(at = this.f.now) {
     this.f.hiss(at, 'bandpass', 2600, 1.3, 0.16, 0.0005, 0.018); this.f.ping(at, 3400, 0.03, 0.02);

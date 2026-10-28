@@ -55,7 +55,7 @@ export class HapticBus {
 
 // ───────────────────────────────────────────────────────────── engine
 export class Feel {
-  ac: AudioContext;
+  ac: BaseAudioContext & { outputLatency?: number; baseLatency?: number; resume?: () => Promise<void> };
   bus: HapticBus;
   out: GainNode;
   wet: GainNode;
@@ -66,8 +66,8 @@ export class Feel {
   touch: 'vibrate' | 'gamepad' | 'taptic' | null = null;
   muted = false;
 
-  constructor() {
-    this.ac = new (window.AudioContext || (window as any).webkitAudioContext)({ latencyHint: 'interactive' });
+  constructor(ctx?: BaseAudioContext) {
+    this.ac = (ctx as any) ?? new (window.AudioContext || (window as any).webkitAudioContext)({ latencyHint: 'interactive' });
     this.bus = new HapticBus(() => this.ac.currentTime);
     const ac = this.ac;
     const comp = ac.createDynamicsCompressor();
@@ -87,7 +87,7 @@ export class Feel {
   }
 
   get now() { return this.ac.currentTime; }
-  async resume() { try { (navigator as any).audioSession && ((navigator as any).audioSession.type = 'playback'); } catch (_) {} await this.ac.resume(); }
+  async resume() { try { (navigator as any).audioSession && ((navigator as any).audioSession.type = 'playback'); } catch (_) {} await this.ac.resume?.(); }
   setBody(level: number) { this.bodyLevel = level; }
 
   // ── node helpers

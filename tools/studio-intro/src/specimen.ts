@@ -33,17 +33,21 @@ export const FOCUS_TRUE = (MAIN_Z + 1) / 2;
 export class Specimen {
   s: SpecimenState = { lamp: 0, focus: 0.12, zoom: 0.1, stick: { x: 0, y: 0 }, haptic: 0 };
   private lampLevel = 0;
-  private panX = 26; private panY = -14;   // µm, stage position
+  private panX = 14; private panY = -8;   // µm, stage position
   private cells: Cell[] = []; private motes: Mote[] = [];
   private bins: HTMLCanvasElement[] = []; private bctx: CanvasRenderingContext2D[] = [];
   private c: CanvasRenderingContext2D; private W = 0; private H = 0; private R = 0; private dpr = 1;
   // events
   private pulses: { t: number; amt: number; who: number }[] = [];
   private mitosisAt = -1; private mitosisDur = 1.5;
-  private ciliaFlick = -9;
   private revealAt = -1; private revealSteps = 22; private revealStep = 0.07; private revealHit = -1;
   private textMask: { x: number; y: number }[] = [];
   private lastT = 0;
+  /** scripted stage position (µm) while the score plays; null = joystick rate control */
+  panOverride: { x: number; y: number } | null = null;
+  private gaze = { x: 0, y: 0 }; private gazeTarget = { x: 0, y: 0 };
+  /** appeal: the nucleus looks toward whatever is being played (unit-ish vector in screen space) */
+  lookAt(x: number, y: number) { const d = Math.hypot(x, y) || 1; this.gazeTarget = { x: x / d, y: y / d }; }
 
   constructor(private cv: HTMLCanvasElement) {
     this.c = cv.getContext('2d')!;
@@ -67,11 +71,12 @@ export class Specimen {
   }
 
   // ── events from the controls
-  pulse(t: number, amt = 1, who = -1) { this.pulses.push({ t, amt, who }); if (this.pulses.length > 24) this.pulses.shift(); }
+  pulse(t: number, amt = 1, who = -1) { this.pulses.push({ t, amt, who }); }
   divide(t: number, dur: number) { this.mitosisAt = t; this.mitosisDur = dur; }
-  flick(t: number) { this.ciliaFlick = t; }
+  private flicks: number[] = []; private flickNow = 0;
+  flick(t: number) { this.flicks.push(t); }
   reveal(t: number, steps: number, step: number, hit: number) { this.revealAt = t; this.revealSteps = steps; this.revealStep = step; this.revealHit = hit; }
-  reset() { this.pulses = []; this.mitosisAt = -1; this.revealAt = -1; this.revealHit = -1; this.panX = 26; this.panY = -14; }
+  reset() { this.flicks = []; this.pulses = []; this.mitosisAt = -1; this.revealAt = -1; this.revealHit = -1; this.panX = 14; this.panY = -8; }
   get divided() { return this.mitosisAt >= 0; }
 
   private mag() { return 10 * Math.pow(10, this.s.zoom); }
@@ -97,9 +102,13 @@ export class Specimen {
     const target = s.lamp;
     this.lampLevel += (target - this.lampLevel) * (target > this.lampLevel ? 1 - Math.exp(-dt * 7) : 1 - Math.exp(-dt * 10));
     const L = this.lampLevel * (1 + 0.06 * vn(t * 37, 3) * (1 - this.lampLevel));
+    this.pulses = this.pulses.filter((p) => p.t > t - 1 || p.t > t); this.flicks = this.flicks.filter((f) => f > t - 0.5);
+    this.flickNow = 0; for (const f of this.flicks) if (t >= f) this.flickNow = Math.max(this.flickNow, Math.exp(-(t - f) / 0.12));
+    const gk = 1 - Math.exp(-dt * 4); this.gaze.x += (this.gazeTarget.x - this.gaze.x) * gk; this.gaze.y += (this.gazeTarget.y - this.gaze.y) * gk;
     // stage pan (joystick is rate control, like a motorised stage)
     const sp = 60 / Math.sqrt(this.mag() / 10);
-    this.panX += s.stick.x * sp * dt; this.panY -= s.stick.y * sp * dt;
+    if (this.panOverride) { this.panX = this.panOverride.x; this.panY = this.panOverride.y; }
+    else { this.panX += s.stick.x * sp * dt; this.panY -= s.stick.y * sp * dt; }
     this.panX = clamp(this.panX, -140, 140); this.panY = clamp(this.panY, -140, 140);
 
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W, H);
@@ -164,6 +173,19 @@ export class Specimen {
       c.globalCompositeOperation = 'source-over';
     }
 
+    // exaggeration: the division pops with a flash and a ring that runs to the field stop
+    if (this.mitosisAt >= 0) {
+      const a = t - (this.mitosisAt + this.mitosisDur);
+      if (a >= 0 && a < 0.7) {
+        const [mx, my] = toPx(0, 0);
+        c.globalCompositeOperation = 'lighter';
+        c.fillStyle = rgba(mixc(VIOLET, CYAN, 0.5), 0.32 * Math.exp(-a / 0.07) * Math.max(0.3, L)); c.fillRect(0, 0, W, H);
+        c.beginPath(); c.arc(mx, my, 16 * ppu + a * R * 1.8, 0, TAU); c.lineWidth = (2 + 14 * Math.exp(-a / 0.12)) * this.dpr;
+        c.strokeStyle = rgba(CYAN, 0.55 * (1 - a / 0.7)); c.stroke();
+        c.globalCompositeOperation = 'source-over';
+      }
+    }
+
     // reveal: the lamp has gone dark; the field becomes a dot matrix
     if (this.revealAt >= 0 && t >= this.revealAt) this.drawReveal(c, cx, cy, R, t);
 
@@ -174,7 +196,12 @@ export class Specimen {
     c.restore(); // clip
     c.beginPath(); c.arc(cx, cy, R, 0, TAU);
     c.lineWidth = 1.2 * this.dpr; c.strokeStyle = rgba(mixc(lampCol, VIOLET, 0.6), 0.12 + 0.35 * L + 0.4 * s.haptic); c.stroke();
-    c.beginPath(); c.arc(cx, cy, R + 5 * this.dpr, 0, TAU); c.lineWidth = 1 * this.dpr; c.strokeStyle = 'rgba(255,255,255,0.06)'; c.stroke();
+    const bev = c.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    bev.addColorStop(0, 'rgba(255,255,255,0.32)'); bev.addColorStop(0.45, 'rgba(255,255,255,0.05)'); bev.addColorStop(1, 'rgba(0,0,0,0)');
+    c.beginPath(); c.arc(cx, cy, R + 4 * this.dpr, 0, TAU); c.lineWidth = 3 * this.dpr; c.strokeStyle = bev; c.stroke();
+    const sh = c.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    sh.addColorStop(0, 'rgba(0,0,0,0)'); sh.addColorStop(1, 'rgba(0,0,0,0.85)');
+    c.beginPath(); c.arc(cx, cy, R + 1.2 * this.dpr, 0, TAU); c.lineWidth = 2.4 * this.dpr; c.strokeStyle = sh; c.stroke();
     c.restore();
   }
 
@@ -184,14 +211,26 @@ export class Specimen {
     return Math.min(1.4, e);
   }
 
+  /** squash & stretch: a damped wobble after each pulse (squash on the hit, stretch on the rebound) */
+  private pulseWob(t: number, who: number) {
+    let w = 0;
+    for (const p of this.pulses) { if (p.who !== -1 && who !== -1 && p.who !== who) continue; const a = t - p.t; if (a >= 0 && a < 0.7) w += p.amt * Math.exp(-a / 0.12) * Math.cos((a * TAU) / 0.22); }
+    return clamp(w, -1.2, 1.2);
+  }
+
   private drawMain(x: CanvasRenderingContext2D, toPx: (x: number, y: number) => [number, number], ppu: number, t: number, L: number, lampCol: RGB) {
     const R0 = 16, axis = 0.55;
     const p = this.mitosisAt < 0 ? 0 : clamp((t - this.mitosisAt) / this.mitosisDur);
     const split = this.mitosisAt >= 0 && t >= this.mitosisAt + this.mitosisDur;
     const [mx, my] = toPx(0, 0);
     if (!split) {
-      const pe = this.pulseEnv(t, -1);
-      if (p <= 0) { this.drawCell(x, mx, my, R0 * ppu * (1 + 0.035 * pe), t, 901, L, lampCol, 0.35, pe, 0, 1); return; }
+      const pe = this.pulseEnv(t, -1), Lc = Math.max(L, 0.34 * Math.min(1, pe)); // a heartbeat glows even in the dark
+      if (p <= 0) {
+        // anticipation: the cell gathers itself (contracts, nucleus brightens) just before it divides
+        const k = this.mitosisAt >= 0 ? ease(clamp((t - (this.mitosisAt - 0.4)) / 0.4)) : 0;
+        this.drawCell(x, mx, my, R0 * ppu * (1 + 0.035 * pe - 0.07 * k), t, 901, Lc, lampCol, 0.35, pe + 0.6 * k, 0, 1, this.pulseWob(t, -1) - 0.5 * k);
+        return;
+      }
       // mitosis: two lobes and a cleavage furrow, outlined as one membrane
       const e = ease(p), D = R0 * 0.62 * e, r = R0 * lerp(1, 0.8, e);
       const pinch = Math.sqrt(Math.max(0, r * r - D * D)) * Math.pow(p, 2.1) * 0.97;
@@ -246,7 +285,7 @@ export class Specimen {
       const pe = this.pulseEnv(t, k);
       const wobble = Math.exp(-a / 0.35) * Math.sin(a * 28) * 0.06;
       const [px, py] = [mx + sd * sep * ca * ppu, my + sd * sep * sa * ppu];
-      this.drawCell(x, px, py, R0 * 0.8 * ppu * (1 + wobble + 0.04 * pe), t, 950 + k, L, lampCol, k ? 0.75 : 0.2, pe, 1, 1);
+      this.drawCell(x, px, py, R0 * 0.8 * ppu * (1 + wobble + 0.04 * pe), t, 950 + k, L, lampCol, k ? 0.75 : 0.2, pe, 1, 1, this.pulseWob(t, k));
     });
   }
 
@@ -259,8 +298,14 @@ export class Specimen {
   }
 
   /** one cell: membrane, cilia (metachronal wave), streaming granules, vacuoles, nucleus */
-  private drawCell(x: CanvasRenderingContext2D, px: number, py: number, r: number, t: number, seed: number, L: number, lampCol: RGB, tint: number, pe: number, flickWho: number, detail: number) {
+  private drawCell(x: CanvasRenderingContext2D, px: number, py: number, r: number, t: number, seed: number, L: number, lampCol: RGB, tint: number, pe: number, flickWho: number, detail: number, sq = 0) {
     if (r < 0.8) return;
+    if (sq) { x.save(); x.translate(px, py); x.scale(1 + 0.075 * sq, 1 - 0.075 * sq); x.translate(-px, -py); }
+    this.cellBody(x, px, py, r, t, seed, L, lampCol, tint, pe, flickWho, detail);
+    if (sq) x.restore();
+  }
+
+  private cellBody(x: CanvasRenderingContext2D, px: number, py: number, r: number, t: number, seed: number, L: number, lampCol: RGB, tint: number, pe: number, flickWho: number, detail: number) {
     const memCol = mixc(mixc(lampCol, VIOLET, 0.5), CYAN, tint * 0.4), N = 72;
     const ph1 = hash(seed) * TAU, ph2 = hash(seed + 1) * TAU;
     const rad = (th: number) => r * (1 + 0.035 * Math.sin(3 * th + ph1 + t * 1.3) + 0.022 * Math.sin(5 * th + ph2 - t * 1.9));
@@ -272,7 +317,7 @@ export class Specimen {
     x.lineWidth = Math.max(1.6, r * 0.16); x.strokeStyle = rgba(memCol, (0.06 + 0.1 * pe) * L); x.stroke();
     if (detail < 0.3 || r < 6) return;
     // cilia
-    const flick = Math.exp(-Math.max(0, t - this.ciliaFlick) / 0.12) * (t >= this.ciliaFlick ? 1 : 0);
+    const flick = this.flickNow;
     const nc = Math.round(70 * detail), cl = r * 0.17;
     x.lineWidth = Math.max(0.6, r * 0.012); x.strokeStyle = rgba(mixc(memCol, CYAN, 0.6), 0.42 * L * (1 + flick));
     x.beginPath();
@@ -292,7 +337,7 @@ export class Specimen {
     }
     // vacuoles
     for (let i = 0; i < 3; i++) { const a = hash(seed + 40 + i) * TAU + t * 0.07, d = r * (0.35 + 0.3 * hash(seed + 50 + i)); x.beginPath(); x.arc(px + Math.cos(a) * d, py + Math.sin(a) * d, r * (0.07 + 0.05 * hash(seed + 60 + i)), 0, TAU); x.lineWidth = Math.max(0.6, r * 0.01); x.strokeStyle = rgba(memCol, 0.3 * L); x.stroke(); }
-    this.nucleus(x, px + r * 0.12, py - r * 0.08, r * 0.33, t, seed + 5, L, lampCol, pe * 0.6);
+    this.nucleus(x, px + r * (0.04 + 0.2 * this.gaze.x), py + r * (-0.04 + 0.2 * this.gaze.y), r * 0.33, t, seed + 5, L, lampCol, pe * 0.6);
   }
 
   private drawReveal(c: CanvasRenderingContext2D, cx: number, cy: number, R: number, t: number) {
