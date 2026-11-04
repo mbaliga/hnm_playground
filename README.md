@@ -1,11 +1,17 @@
-# Haptics + Audio Workbench
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/hafx-studio-icon-dark.svg">
+  <img src="docs/brand/hafx-studio-icon-light.svg" alt="HAfx Studio app icon" width="96" height="96">
+</picture>
+
+# HAfx Studio
 
 > **Constellation** · `state: active` · public · [registry: `Personal-Tracker/CONSTELLATION.md`](https://github.com/mbaliga/Personal-Tracker/blob/main/CONSTELLATION.md)
 > Cross-platform haptics + audio authoring workbench (Kotlin Multiplatform), one backend-agnostic IR.
 
-A cross-platform tool for **designing, feeling, and exporting haptic + sound effects**.
-Android-first, with JVM desktop next. Two equally-weighted intents: a *playground* to explore and
-feel effects, and a *dev tool* that exports effects into real apps.
+**HAfx Studio**, the Haptics + Audio Workbench, is a cross-platform tool for **designing, feeling, and
+exporting haptic + sound effects**. Android-first, with JVM desktop next. Two equally-weighted
+intents: a *playground* to explore and feel effects, and a *dev tool* that exports effects into real
+apps.
 
 Built with **Kotlin Multiplatform**; `kotlinx.serialization` is the native save format.
 
@@ -88,6 +94,9 @@ the M0–M7 build order with current status.
 For where the authoring UI goes next — visual/procedural haptic design (motion primitives → texture
 fields → physics/material), the perceptual grounding, and AI's role as a parameter-space navigator —
 see [docs/AUTHORING-INTERFACES.md](docs/AUTHORING-INTERFACES.md).
+
+The app icon (light + dark) and how it maps onto the Android launcher and the desktop window are in
+[docs/brand/](docs/brand/README.md).
 
 ## Do not touch
 
