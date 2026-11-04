@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- minSdk is 31, so the system's widget radii are always available: corners match the launcher's. -->
+    <dimen name="hnm_widget_radius">@android:dimen/system_app_widget_background_radius</dimen>
+    <dimen name="hnm_widget_inner_radius">@android:dimen/system_app_widget_inner_radius</dimen>
+    <dimen name="hnm_widget_padding">10dp</dimen>
+    <dimen name="hnm_widget_gap">4dp</dimen>
+    <dimen name="hnm_widget_touch">48dp</dimen>
+    <dimen name="hnm_widget_header">18dp</dimen>
+</resources>

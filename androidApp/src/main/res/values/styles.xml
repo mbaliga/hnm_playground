@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home-screen widget text. Sizes in sp; secondary text never below 12sp, body 14sp. -->
+    <style name="HnmWidget" />
+
+    <style name="HnmWidget.Text">
+        <item name="android:textColor">@color/hnm_widget_ink</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:textAlignment">viewStart</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+
+    <style name="HnmWidget.Text.Label">
+        <item name="android:textColor">@color/hnm_widget_ink_dim</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.08</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <!-- A card's body (a pattern's description): body size, secondary ink. -->
+    <style name="HnmWidget.Text.Body">
+        <item name="android:textColor">@color/hnm_widget_ink_dim</item>
+    </style>
+
+    <style name="HnmWidget.Text.Meta">
+        <item name="android:textColor">@color/hnm_widget_ink_dim</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="HnmWidget.Text.Title">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="HnmWidget.Text.Value">
+        <item name="android:textSize">28sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!--
+        A pad's sparkline runs left to right in time, like the app's timeline and the drawn shape. Its
+        block characters are bidi-neutral, so without a fixed direction an RTL locale would reverse it.
+    -->
+    <style name="HnmWidget.Text.Glyph" parent="HnmWidget.Text.Meta">
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:textDirection">ltr</item>
+    </style>
+
+    <style name="HnmWidget.Button" parent="HnmWidget.Text">
+        <item name="android:minHeight">@dimen/hnm_widget_touch</item>
+        <item name="android:minWidth">@dimen/hnm_widget_touch</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textAlignment">center</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:background">@drawable/hnm_widget_button_bg</item>
+    </style>
+
+    <!-- The translucent "feel it" activity a pad opens: nothing but a small chip over the home screen. -->
+    <style name="Theme.Hnm.Feel" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+</resources>

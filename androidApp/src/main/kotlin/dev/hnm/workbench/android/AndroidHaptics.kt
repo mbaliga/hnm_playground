@@ -23,6 +23,10 @@ import dev.hnm.workbench.core.playback.PlayEnvelope
 import dev.hnm.workbench.core.playback.PlayOneShot
 import dev.hnm.workbench.core.playback.PlayPrimitive
 import dev.hnm.workbench.core.playback.PlayWaveform
+import dev.hnm.workbench.core.widget.HapticTier
+import dev.hnm.workbench.core.widget.PhoneGlances
+import dev.hnm.workbench.core.widget.RenderPath
+import dev.hnm.workbench.core.widget.RenderPaths
 
 /**
  * Bridges `core`'s device-agnostic schedule to the real Android `Vibrator`, choosing the best
@@ -121,11 +125,11 @@ object AndroidHaptics {
     }
 
     /** An honest label that doesn't over-claim ERM when the API simply isn't exposing the LRA. */
-    fun actuatorLabel(caps: HapticCapabilities): String = when {
-        !caps.hasVibrator -> "no vibrator"
-        caps.supportedPrimitives.isNotEmpty() -> "LRA — composition primitives"
-        caps.hasAmplitudeControl -> "LRA — amplitude control"
-        else -> "on/off via standard API (rich haptics likely behind a vendor SDK)"
+    fun actuatorLabel(caps: HapticCapabilities): String = when (PhoneGlances.tierOf(caps)) {
+        HapticTier.NONE -> "no vibrator"
+        HapticTier.PRIMITIVES -> "LRA — composition primitives"
+        HapticTier.AMPLITUDE -> "LRA — amplitude control"
+        HapticTier.ON_OFF -> "on/off via standard API (rich haptics likely behind a vendor SDK)"
     }
 
     /**
@@ -140,18 +144,20 @@ object AndroidHaptics {
         handler: Handler,
         onError: (String) -> Unit,
     ) {
-        if (commands.isEmpty()) {
+        // The same choice the home-screen widgets report (RenderPaths), so the two can't disagree.
+        val path = RenderPaths.of(pattern, commands)
+        if (path == RenderPath.NOTHING) {
             onError("Nothing scheduled — device reports no vibrator?")
             return
         }
         // 1) Native composition primitives.
-        if (commands.all { it is PlayPrimitive }) {
+        if (path == RenderPath.PRIMITIVES) {
             composePrimitives(commands.filterIsInstance<PlayPrimitive>())?.let { vibrateSafely(vibrator, it, onError) }
             return
         }
         // 2) Discrete taps with no primitive support -> OEM-tuned predefined effects, scheduled in time.
-        val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }
-        if (events.isNotEmpty() && events.all { it is Transient || it is Primitive }) {
+        if (path == RenderPath.PREDEFINED) {
+            val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }
             val base = SystemClock.uptimeMillis()
             events.sortedBy { it.time }.forEach { event ->
                 val effect = predefinedFor(event)
@@ -190,17 +196,17 @@ object AndroidHaptics {
     }
 
     /** Describe the rendering this pattern will actually use on this device (shown under each row). */
-    fun renderingSummary(pattern: HapticAudioPattern, commands: List<HapticCommand>): String {
-        if (commands.isEmpty()) return "nothing (no vibrator)"
-        if (commands.all { it is PlayPrimitive }) {
-            return "primitives: " + commands.filterIsInstance<PlayPrimitive>().joinToString(", ") { it.type.name }
+    fun renderingSummary(pattern: HapticAudioPattern, commands: List<HapticCommand>): String =
+        when (RenderPaths.of(pattern, commands)) {
+            RenderPath.NOTHING -> "nothing (no vibrator)"
+            RenderPath.PRIMITIVES ->
+                "primitives: " + commands.filterIsInstance<PlayPrimitive>().joinToString(", ") { it.type.name }
+            RenderPath.PREDEFINED -> {
+                val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }
+                "predefined: " + events.sortedBy { it.time }.joinToString(", ") { effectNameFor(it) }
+            }
+            RenderPath.WAVEFORM -> "waveform · ${describe(commands)}"
         }
-        val events = pattern.tracks.filterIsInstance<HapticTrack>().filterNot { it.muted }.flatMap { it.events }
-        if (events.isNotEmpty() && events.all { it is Transient || it is Primitive }) {
-            return "predefined: " + events.sortedBy { it.time }.joinToString(", ") { effectNameFor(it) }
-        }
-        return "waveform · ${describe(commands)}"
-    }
 
     private fun effectNameFor(event: HapticEvent): String = when (event) {
         is Transient -> when {

@@ -21,10 +21,139 @@
             </intent-filter>
         </activity>
 
+        <!--
+            Home-screen widget "open this pattern" taps start the workbench through this alias. It is
+            not exported, so only the app's own PendingIntents reach it, and the workbench loads a
+            pattern into the editor only when it was started through it (see WidgetIntents).
+        -->
+        <activity-alias
+            android:name=".WidgetOpenPattern"
+            android:exported="false"
+            android:targetActivity=".WorkbenchActivity" />
+
         <!-- The flat feel-test gallery, reachable from the workbench's "Gallery" button. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="Feel-test gallery" />
+
+        <!--
+            Plays one gallery pattern for a home-screen widget, then finishes. A background app's
+            touch-feedback vibration is dropped on Android 12+, so a pad opens this small translucent
+            activity instead of playing from a broadcast. Not exported: only the app's own
+            PendingIntents start it.
+        -->
+        <activity
+            android:name=".FeelActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:label="@string/feel_activity_label"
+            android:launchMode="singleInstance"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Hnm.Feel" />
+
+        <!-- Home-screen widgets (see docs/widgets.md). Providers are exported so any launcher can bind them. -->
+        <receiver
+            android:name=".widget.EffectPadsWidget"
+            android:exported="true"
+            android:label="@string/widget_pads_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <!-- Words and numbers are printed in the phone's language. -->
+            <intent-filter>
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_pads" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.PatternOfDayWidget"
+            android:exported="true"
+            android:label="@string/widget_daily_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <!-- Times and dates are printed in the phone's zone, clock format and language. -->
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_daily" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.PatternShapeWidget"
+            android:exported="true"
+            android:label="@string/widget_shape_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <!-- Times and dates are printed in the phone's zone, clock format and language. -->
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_shape" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.RecentlyFeltWidget"
+            android:exported="true"
+            android:label="@string/widget_recent_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <!-- Times and dates are printed in the phone's zone, clock format and language. -->
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_recent" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.PhoneHapticsWidget"
+            android:exported="true"
+            android:label="@string/widget_phone_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <!-- Words and numbers are printed in the phone's language. -->
+            <intent-filter>
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_phone" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.LibraryWidget"
+            android:exported="true"
+            android:label="@string/widget_library_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <!-- Words and numbers are printed in the phone's language. -->
+            <intent-filter>
+                <action android:name="android.intent.action.LOCALE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_library" />
+        </receiver>
     </application>
 </manifest>

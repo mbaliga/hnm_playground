@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Home-screen widget colours, night: recorder2's screen (#141210) and ink (#DDDBD6). The dim ink is
+    lighter than the app's InkDim (#5C5A56, 2.7:1 on the screen colour, too faint for 12sp text):
+    #A39F97 is 7.1:1. Raised and stroke are new neutrals between the two.
+-->
+<resources>
+    <color name="hnm_widget_surface">#141210</color>
+    <color name="hnm_widget_raised">#1E1B18</color>
+    <color name="hnm_widget_stroke">#34302A</color>
+    <color name="hnm_widget_ink">#DDDBD6</color>
+    <color name="hnm_widget_ink_dim">#A39F97</color>
+    <color name="hnm_widget_ripple">#33FFFFFF</color>
+</resources>
