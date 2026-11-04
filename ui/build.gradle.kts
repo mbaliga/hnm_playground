@@ -47,6 +47,7 @@ kotlin {
         }
         val jvmMain by getting {
             dependencies {
+                implementation(project(":backend-desktop"))
                 implementation(compose.desktop.currentOs)
             }
         }

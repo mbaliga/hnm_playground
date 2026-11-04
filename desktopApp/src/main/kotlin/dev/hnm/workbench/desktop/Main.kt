@@ -1,5 +1,6 @@
 package dev.hnm.workbench.desktop
 
+import dev.hnm.workbench.backend.desktop.JvmAudioBackend
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
 import dev.hnm.workbench.core.export.AhapExporter
 import dev.hnm.workbench.core.export.KotlinVibrationEffectExporter
