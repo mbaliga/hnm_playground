@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/hnm_widget_bg"
+    android:clipToOutline="true"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="@dimen/hnm_widget_padding"
+    android:paddingTop="2dp"
+    android:paddingEnd="@dimen/hnm_widget_padding"
+    android:paddingBottom="2dp">
+
+    <TextView
+        android:id="@+id/stat_value"
+        style="@style/HnmWidget.Text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/stat_label"
+        style="@style/HnmWidget.Text.Meta"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="8dp"
+        android:maxLines="2" />
+</LinearLayout>

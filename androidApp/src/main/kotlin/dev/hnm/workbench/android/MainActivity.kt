@@ -25,25 +25,13 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import dev.hnm.workbench.core.design.MaterialPreset
-import dev.hnm.workbench.core.design.ModalSynth
-import dev.hnm.workbench.core.design.MotionPrimitive
-import dev.hnm.workbench.core.design.MotionPrimitives
-import dev.hnm.workbench.core.design.ParameterNavigator
-import dev.hnm.workbench.core.design.RhythmCapture
+import dev.hnm.workbench.android.widget.HnmWidgets
 import dev.hnm.workbench.core.design.SplashMotifs
-import dev.hnm.workbench.core.design.Tap
-import dev.hnm.workbench.core.design.TextureField
-import dev.hnm.workbench.core.design.TextureFieldType
-import dev.hnm.workbench.core.design.TextureFields
-import dev.hnm.workbench.core.design.Variations
 import dev.hnm.workbench.core.device.DeviceDatabase
 import dev.hnm.workbench.core.dsp.DefaultPatternRenderer
-import dev.hnm.workbench.core.ir.Continuous
-import dev.hnm.workbench.core.ir.Envelope
 import dev.hnm.workbench.core.ir.HapticAudioPattern
-import dev.hnm.workbench.core.ir.HapticTrack
-import dev.hnm.workbench.core.library.BuiltInPatterns
+import dev.hnm.workbench.core.library.FeelEntry
+import dev.hnm.workbench.core.library.FeelTestCatalog
 import dev.hnm.workbench.core.playback.HapticCapabilities
 
 // ---- recorder2.html color constants (the dark revision) ----
@@ -89,20 +77,8 @@ class MainActivity : Activity() {
         vibrator = AndroidHaptics.vibrator(this)
         capabilities = AndroidHaptics.probe(vibrator)
 
-        val patterns = buildList {
-            BuiltInPatterns.ALL.forEach { add(it.name to it) }
-            add("Strong buzz (400 ms)" to strongBuzz())
-            Variations.family(BuiltInPatterns.CONFIRM, count = 3).forEachIndexed { i, p ->
-                add("Confirm · variation ${i + 1}" to p)
-            }
-            add("Captured rhythm" to capturedRhythm())
-            MotionPrimitive.entries.forEach { p ->
-                add("Motion · ${p.displayName}" to MotionPrimitives.toPattern(p))
-            }
-            texturePatterns().forEach { add(it) }
-            navigatorPatterns().forEach { add(it) }
-            MaterialPreset.entries.forEach { add("Material · ${it.displayName}" to ModalSynth.toPattern(it.material)) }
-        }
+        // The gallery's list lives in core so the home-screen widgets can name and replay the same entries.
+        val patterns = FeelTestCatalog.entries
 
         // ---- outer device shell (near-black 160° gradient) ----
         val shell = LinearLayout(this).apply {
@@ -161,7 +137,7 @@ class MainActivity : Activity() {
         screen.addView(spacer(dp(12)))
 
         // Pattern list rows
-        patterns.forEach { (name, pattern) -> screen.addView(patternRow(name, pattern)) }
+        patterns.forEach { entry -> screen.addView(patternRow(entry)) }
 
         shell.addView(screen, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
@@ -203,58 +179,6 @@ class MainActivity : Activity() {
         AndroidHaptics.playPattern(vibrator, pattern, commands, handler) { toast(it) }
         runCatching { audio.play(stream) }.onFailure { toast("audio failed: ${it.message}") }
     }
-
-    private fun strongBuzz(): HapticAudioPattern =
-        HapticAudioPattern(
-            name = "Strong buzz",
-            tracks = listOf(
-                HapticTrack(
-                    id = "h1",
-                    events = listOf(
-                        Continuous(
-                            time = 0.0,
-                            duration = 0.4,
-                            intensity = 1.0,
-                            sharpness = 0.5,
-                            envelope = Envelope(attack = 0.02, sustain = 1.0, release = 0.05),
-                        ),
-                    ),
-                ),
-            ),
-        )
-
-    private fun texturePatterns(): List<Pair<String, HapticAudioPattern>> {
-        val roughnesses = listOf(0.2 to "smooth", 0.5 to "mid", 0.85 to "rough")
-        val velocities = listOf(0.5 to "slow", 1.5 to "fast")
-        return buildList {
-            for (type in TextureFieldType.entries) {
-                for ((r, rLabel) in roughnesses) {
-                    val field = TextureField(type = type, roughness = r)
-                    add("Texture · ${type.displayName} · $rLabel" to TextureFields.toPattern(field))
-                }
-            }
-            val midPerlin = TextureField(type = TextureFieldType.PERLIN, roughness = 0.5)
-            for ((v, vLabel) in velocities) {
-                add("Texture · Perlin mid · $vLabel scrub" to TextureFields.toPattern(midPerlin, velocity = v))
-            }
-        }
-    }
-
-    private fun navigatorPatterns(): List<Pair<String, HapticAudioPattern>> = buildList {
-        ParameterNavigator.textureFamilyPatterns(
-            TextureField(type = TextureFieldType.PERLIN, roughness = 0.05),
-            TextureField(type = TextureFieldType.PERLIN, roughness = 0.95),
-            count = 5,
-        ).forEachIndexed { i, p -> add("Navigate · texture ${i + 1}/5" to p) }
-        ParameterNavigator.motionFamilyPatterns(MotionPrimitive.STIR, MotionPrimitive.SETTLE, count = 5)
-            .forEachIndexed { i, p -> add("Navigate · motion ${i + 1}/5" to p) }
-    }
-
-    private fun capturedRhythm(): HapticAudioPattern =
-        RhythmCapture.fromTaps(
-            listOf(Tap(0.0, 0.9), Tap(0.12, 0.6), Tap(0.24, 0.6), Tap(0.5, 1.0)),
-            name = "Captured rhythm",
-        )
 
     private fun diagnostics(): String {
         val c = capabilities
@@ -345,7 +269,9 @@ class MainActivity : Activity() {
     }
 
     /** Pattern row: dark screen style — name + schedule, then a dome Play button. */
-    private fun patternRow(name: String, pattern: HapticAudioPattern): LinearLayout {
+    private fun patternRow(entry: FeelEntry): LinearLayout {
+        val name = entry.name
+        val pattern = entry.pattern
         val schedule = AndroidHaptics.renderingSummary(pattern, renderer.scheduleHaptics(pattern, capabilities))
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -374,7 +300,13 @@ class MainActivity : Activity() {
             )
 
             // Dome-style Play button
-            addView(domeButton("Play") { play(pattern) })
+            addView(
+                domeButton("Play") {
+                    play(pattern)
+                    // Feeds the "Recently felt" and "Pattern shape" home-screen widgets.
+                    HnmWidgets.recordFelt(this@MainActivity, entry.id)
+                },
+            )
         }
     }
 

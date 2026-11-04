@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/hnm_widget_bg"
+    android:clipToOutline="true"
+    android:orientation="vertical"
+    android:gravity="center_vertical"
+    android:paddingStart="@dimen/hnm_widget_padding"
+    android:paddingTop="2dp"
+    android:paddingEnd="@dimen/hnm_widget_padding"
+    android:paddingBottom="2dp">
+
+    <TextView
+        android:id="@+id/card_label"
+        style="@style/HnmWidget.Text.Label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/widget_daily_label" />
+
+    <TextView
+        android:id="@+id/card_title"
+        style="@style/HnmWidget.Text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textStyle="bold" />
+</LinearLayout>

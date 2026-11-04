@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A drawn stand-in for the "Pattern shape" bitmap, used only in widget-picker previews. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="192dp"
+    android:height="64dp"
+    android:viewportWidth="240"
+    android:viewportHeight="80">
+    <path android:fillColor="#FFFFFFFF" android:fillAlpha="0.45"
+        android:pathData="M4,80 L4,20 L16,20 L16,80 Z M120,80 L120,32 L132,32 L132,80 Z M132,80 L132,44 L144,44 L144,80 Z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2"
+        android:pathData="M4,20 L16,20 M120,32 L132,32 L132,44 L144,44" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2"
+        android:pathData="M4,30 L10,30 M120,56 L126,56 M132,56 L138,56" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeAlpha="0.35" android:strokeWidth="1"
+        android:pathData="M0,79 L240,79" />
+</vector>

@@ -39,4 +39,20 @@ object HapticMapping {
         }
         return ordered.firstOrNull { it in supported }
     }
+
+    /**
+     * A primitive expressed as a transient's (intensity, sharpness): how the renderer synthesizes a
+     * primitive the hardware doesn't support, and how the home-screen sketch draws one. [scale] is the
+     * intensity; the sharpness is the primitive's characteristic crispness.
+     */
+    fun primitiveAsTransient(type: PrimitiveType, scale: Double): Pair<Double, Double> = when (type) {
+        PrimitiveType.TICK -> scale to 0.95
+        PrimitiveType.LOW_TICK -> scale to 0.6
+        PrimitiveType.CLICK -> scale to 0.5
+        PrimitiveType.THUD -> scale to 0.15
+        PrimitiveType.SPIN -> scale to 0.4
+        PrimitiveType.QUICK_RISE -> scale to 0.7
+        PrimitiveType.SLOW_RISE -> scale to 0.5
+        PrimitiveType.QUICK_FALL -> scale to 0.6
+    }
 }

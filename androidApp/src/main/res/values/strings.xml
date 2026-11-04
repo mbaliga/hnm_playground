@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared widget states -->
+    <string name="widget_loading">Loading…</string>
+    <string name="widget_error_title">Couldn\'t draw this widget</string>
+    <string name="widget_error_subtitle">Tap to open the workbench</string>
+    <string name="widget_open_app_cd">Open Haptics Workbench</string>
+    <string name="widget_open_gallery">Tap to open the feel-test gallery</string>
+    <string name="widget_open_gallery_cd">Open the feel-test gallery</string>
+    <string name="widget_tap_open_workbench">Tap to open it in the workbench.</string>
+    <string name="widget_duration_seconds">%1$s s</string>
+    <string name="widget_two_parts">%1$s · %2$s</string>
+    <string name="widget_none">none</string>
+    <plurals name="widget_events">
+        <item quantity="one">%d haptic event</item>
+        <item quantity="other">%d haptic events</item>
+    </plurals>
+
+    <!-- How the player renders a pattern on this phone (RenderPath) -->
+    <string name="widget_path_primitives">Native primitives</string>
+    <string name="widget_path_predefined">Predefined effects</string>
+    <string name="widget_path_waveform">Amplitude waveform</string>
+    <string name="widget_path_nothing">Nothing (no vibrator)</string>
+
+    <!-- Gallery sections (FeelKind) -->
+    <string name="widget_kind_reference">Reference</string>
+    <string name="widget_kind_buzz">Buzz</string>
+    <string name="widget_kind_variation">Variation</string>
+    <string name="widget_kind_captured">Captured rhythm</string>
+    <string name="widget_kind_motion">Motion</string>
+    <string name="widget_kind_texture">Texture</string>
+    <string name="widget_kind_navigator">Navigator</string>
+    <string name="widget_kind_material">Material</string>
+
+    <!-- Effect pads -->
+    <string name="widget_pads_name">Effect pads</string>
+    <string name="widget_pads_description">Built-in haptic patterns as buttons. Tap one to feel it.</string>
+    <string name="widget_pads_header">Effect pads</string>
+    <string name="widget_pad_cd">Feel %1$s</string>
+
+    <!-- Pattern of the day -->
+    <string name="widget_daily_name">Pattern of the day</string>
+    <string name="widget_daily_description">One pattern from the library each day, with its shape and a button to feel it.</string>
+    <string name="widget_daily_label">Pattern of the day</string>
+    <string name="widget_daily_label_dated">Pattern of the day · %1$s</string>
+    <string name="widget_daily_feel">Feel it</string>
+    <string name="widget_daily_open">Open</string>
+    <string name="widget_daily_feel_cd">Feel today\'s pattern, %1$s</string>
+    <string name="widget_daily_open_cd">Open %1$s in the workbench</string>
+    <string name="widget_daily_small_cd">Pattern of the day for %1$s: %2$s. Tap to feel it.</string>
+    <string name="widget_daily_card_cd">Pattern of the day for %1$s: %2$s</string>
+    <string name="widget_daily_meta">Plays here: %1$s · %2$s · %3$s</string>
+
+    <!-- Pattern shape -->
+    <string name="widget_shape_name">Pattern shape</string>
+    <string name="widget_shape_description">The intensity and sharpness of the pattern you last felt, drawn over time.</string>
+    <string name="widget_shape_label">Last felt</string>
+    <string name="widget_shape_title">Last felt · %1$s</string>
+    <string name="widget_shape_empty">Feel a pattern from a pad or the gallery and its shape is drawn here.</string>
+    <string name="widget_shape_empty_short">Nothing felt yet</string>
+    <string name="widget_shape_legend">▮ intensity   ╌ sharpness</string>
+    <string name="widget_shape_facts">%1$s over %2$s · peak intensity %3$s · sharpness %4$s</string>
+    <string name="widget_shape_sharpness_range">%1$s–%2$s</string>
+    <string name="widget_shape_felt_at">felt %1$s</string>
+    <string name="widget_shape_facts_cd">%1$s: %2$s over %3$s, peak intensity %4$s, sharpness %5$s.</string>
+
+    <!-- Recently felt -->
+    <string name="widget_recent_name">Recently felt</string>
+    <string name="widget_recent_description">The last five patterns you felt from the gallery or a widget. Tap one to feel it again.</string>
+    <string name="widget_recent_header">Recently felt</string>
+    <string name="widget_recent_empty">Nothing felt yet. Patterns you play from the gallery or a pad appear here.</string>
+    <string name="widget_recent_row_meta">%1$s · %2$s</string>
+    <string name="widget_recent_row_cd">Feel %1$s again (%2$s, felt %3$s)</string>
+    <string name="widget_recent_play">▶</string>
+
+    <!-- This phone's haptics -->
+    <string name="widget_phone_name">This phone\'s haptics</string>
+    <string name="widget_phone_description">What this phone\'s vibrator reports: composition primitives, amplitude control and predefined effects.</string>
+    <string name="widget_phone_header">This phone</string>
+    <string name="widget_phone_value">%1$d/%2$d</string>
+    <string name="widget_phone_value_none">None</string>
+    <string name="widget_phone_value_label">%1$s %2$s</string>
+    <string name="widget_phone_primitives">composition primitives</string>
+    <string name="widget_phone_tier_primitives">Native composition primitives</string>
+    <string name="widget_phone_tier_amplitude">Amplitude control, no primitives</string>
+    <string name="widget_phone_tier_on_off">On/off through the standard API; richer haptics may sit behind a vendor SDK</string>
+    <string name="widget_phone_tier_none">No vibrator reported</string>
+    <string name="widget_phone_amplitude_yes">amplitude control: yes</string>
+    <string name="widget_phone_amplitude_no">amplitude control: no</string>
+    <string name="widget_phone_effects">predefined effects: %1$s</string>
+    <string name="widget_phone_effects_none">predefined effects: none reported</string>
+    <string name="widget_phone_caption">%1$s · %2$s</string>
+    <string name="widget_phone_primitive_yes">● %1$s yes</string>
+    <string name="widget_phone_primitive_no">○ %1$s no</string>
+    <string name="widget_phone_cd">%1$s. %2$s. %3$s. Tap to open the gallery and its self-test.</string>
+    <string name="widget_phone_supported_cd">Supported: %1$s</string>
+    <string name="widget_phone_unsupported_cd">Not supported: %1$s</string>
+
+    <!-- Library at a glance -->
+    <string name="widget_library_name">Library at a glance</string>
+    <string name="widget_library_description">How many patterns there are to feel, and how this phone plays them.</string>
+    <plurals name="widget_library_header">
+        <item quantity="one">Library · %d pattern</item>
+        <item quantity="other">Library · %d patterns</item>
+    </plurals>
+    <string name="widget_library_path_meta">how this phone plays them</string>
+    <string name="widget_library_kind_meta">in the gallery</string>
+    <string name="widget_library_count">%1$d</string>
+    <string name="widget_library_cd">%1$s. Tap to open the feel-test gallery.</string>
+    <string name="widget_library_row_cd">%1$s, %2$s: %3$d</string>
+
+    <!-- The translucent activity a pad opens to play its pattern -->
+    <string name="feel_activity_label">Feel a pattern</string>
+    <string name="feel_playing">Feeling %1$s</string>
+    <string name="feel_unknown">That pattern isn\'t in this version of the app.</string>
+    <string name="feel_dismiss_cd">Stop and go back</string>
+    <string name="feel_playing_cd">Feeling %1$s. Tap to stop and go back.</string>
+
+    <!-- Widget-picker previews only: sample content, never shown as data. -->
+    <string name="widget_preview_tap" translatable="false">Tap</string>
+    <string name="widget_preview_heartbeat" translatable="false">Heartbeat</string>
+    <string name="widget_preview_confirm" translatable="false">Confirm</string>
+    <string name="widget_preview_success" translatable="false">Success</string>
+    <string name="widget_preview_glyph_tap" translatable="false">▇▇▁▁▁▁▁▁</string>
+    <string name="widget_preview_glyph_heartbeat" translatable="false">▇▁▁▁▁▁▁▆</string>
+    <string name="widget_preview_glyph_confirm" translatable="false">▇▇▁▁▁███</string>
+    <string name="widget_preview_glyph_success" translatable="false">▆▅▅▅▅▅▅▃</string>
+    <string name="widget_preview_daily_body" translatable="false">Two pulses (lub-dub), then silence: alive, loading, a pulse.</string>
+    <string name="widget_preview_recent_meta" translatable="false">Reference · 4 Nov, 14:02</string>
+    <string name="widget_preview_motion" translatable="false">Motion · Settle</string>
+    <string name="widget_preview_motion_meta" translatable="false">Motion · 4 Nov, 13:40</string>
+    <string name="widget_preview_material" translatable="false">Material · Glass</string>
+    <string name="widget_preview_material_meta" translatable="false">Material · 3 Nov, 09:15</string>
+    <string name="widget_preview_phone_value" translatable="false">8/8</string>
+    <string name="widget_preview_library_header" translatable="false">Library · 57 patterns</string>
+    <string name="widget_preview_count_a" translatable="false">27</string>
+    <string name="widget_preview_count_b" translatable="false">30</string>
+    <string name="widget_preview_count_c" translatable="false">15</string>
+</resources>

@@ -360,16 +360,8 @@ class DefaultPatternRenderer(
         return max(0, kotlin.math.ceil(dur * sampleRate).toInt())
     }
 
-    private fun primitiveToTransient(type: PrimitiveType, scale: Double): Pair<Double, Double> = when (type) {
-        PrimitiveType.TICK -> scale to 0.95
-        PrimitiveType.LOW_TICK -> scale to 0.6
-        PrimitiveType.CLICK -> scale to 0.5
-        PrimitiveType.THUD -> scale to 0.15
-        PrimitiveType.SPIN -> scale to 0.4
-        PrimitiveType.QUICK_RISE -> scale to 0.7
-        PrimitiveType.SLOW_RISE -> scale to 0.5
-        PrimitiveType.QUICK_FALL -> scale to 0.6
-    }
+    private fun primitiveToTransient(type: PrimitiveType, scale: Double): Pair<Double, Double> =
+        HapticMapping.primitiveAsTransient(type, scale)
 
     companion object {
         private fun List<ParameterCurve>.find(param: CurveParam): ParameterCurve? =

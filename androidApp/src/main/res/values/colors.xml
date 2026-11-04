@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Home-screen widget colours, day. The app itself is all-dark (recorder2's palette, see values-night)
+    and has no day palette, so this light set is new to the widgets: a warm paper (#EFECE6) with the
+    app's ShellTop (#1C1A18) as ink. It needs the owner's sign-off; to match the app by day as well,
+    copy the values-night set here. Every colour is a neutral: no widget state is carried by colour,
+    and none uses the player's red accent.
+-->
+<resources>
+    <color name="hnm_widget_surface">#EFECE6</color>
+    <color name="hnm_widget_raised">#E2DED6</color>
+    <color name="hnm_widget_stroke">#C4BFB5</color>
+    <color name="hnm_widget_ink">#1C1A18</color>
+    <color name="hnm_widget_ink_dim">#57534D</color>
+    <color name="hnm_widget_ripple">#33000000</color>
+</resources>
