@@ -1,4 +1,4 @@
-package dev.hnm.workbench.desktop
+package dev.hnm.workbench.backend.desktop
 
 import dev.hnm.workbench.core.playback.AudioBackend
 import dev.hnm.workbench.core.playback.FloatStream
