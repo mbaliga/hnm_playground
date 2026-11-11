@@ -31,9 +31,10 @@ import dev.hnm.workbench.core.library.BuiltInPatterns
 import dev.hnm.workbench.core.library.PatternLibrary
 import dev.hnm.workbench.core.playback.HapticCapabilities
 import dev.hnm.workbench.core.playback.PatternPlayer
+import dev.hnm.workbench.ui.PlatformIo
 
 /** The format shown in the export panel. */
-enum class ExportKind { JSON, KOTLIN, AHAP }
+enum class ExportKind(val extension: String) { JSON("json"), KOTLIN("kt"), AHAP("ahap") }
 
 /**
  * Compose state holder for the editor. Keeps the current [HapticAudioPattern] plus selection, target
@@ -60,6 +61,32 @@ class EditorState {
 
     /** Feel the current pattern on the device, if a real player is wired. */
     fun playCurrent() = player.play(pattern)
+
+    /**
+     * What the host machine can actually actuate, as opposed to [capabilities] (the target profile being
+     * previewed). Null, the default, means "say nothing": Android and the headless render leave it unset.
+     */
+    var hostCapabilities by mutableStateOf<HapticCapabilities?>(null)
+
+    /** Host file and clipboard access. [PlatformIo.None] means the Open/Save/Copy controls are hidden. */
+    var io: PlatformIo by mutableStateOf(PlatformIo.None)
+
+    /** Whether the host supplied file/clipboard access. */
+    val hasIo: Boolean get() = io !== PlatformIo.None
+
+    /** Ask the host for a file and import it as AHAP JSON. */
+    fun openFromHost() = io.openText { text ->
+        if (text == null) importMessage = "Nothing opened." else importAhap(text)
+    }
+
+    /** Save the current export text through the host. */
+    fun saveToHost() = io.saveText(
+        "${pattern.name.ifBlank { "pattern" }}.${exportKind.extension}",
+        exportText(),
+    )
+
+    /** Copy the current export text through the host. */
+    fun copyToHost() = io.copyText(exportText())
 
     // --- AI assistant ------------------------------------------------------
 

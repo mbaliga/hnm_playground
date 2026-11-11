@@ -80,7 +80,10 @@ compose.desktop {
     application {
         mainClass = "dev.hnm.workbench.ui.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.AppImage)
+            // One list for every desktop OS: jpackage only builds the formats the host OS supports, so
+            // Dmg (macOS) and Msi (Windows) add no tasks on Linux. No bundleID/upgradeUuid until each has
+            // a NAMES.md row (R11). Every package is UNSIGNED; see packaging/macos and packaging/windows.
+            targetFormats(TargetFormat.Deb, TargetFormat.AppImage, TargetFormat.Dmg, TargetFormat.Msi)
             packageName = "HapticsAudioWorkbench"
             packageVersion = "1.0.0"
         }

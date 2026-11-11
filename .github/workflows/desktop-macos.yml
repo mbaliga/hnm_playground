@@ -1,0 +1,41 @@
+name: Desktop macOS (unsigned)
+
+# UNSIGNED, not for release. Builds the DMG on a hosted macOS runner to prove it packages; nothing is
+# uploaded (R6: no Actions artifacts, no Release), no signing secrets exist, and it runs only when the repo
+# is public, because hosted macOS minutes are free there only (OQ-20).
+# TODO(pin): actions use version tags; replace with commit SHAs (R3) once resolvable.
+# Signing, notarisation and Release publishing are the owner's later work: see packaging/macos/README.md.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    name: jvmTest + unsigned packageDmg (macOS)
+    if: github.event.repository.private == false
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Core and UI tests
+        run: ./gradlew :core:jvmTest :ui:jvmTest --stacktrace
+
+      - name: Package unsigned DMG
+        run: ./gradlew :ui:packageDmg --stacktrace
+
+      - name: Show the unsigned DMG (not uploaded)
+        run: ls -l ui/build/compose/binaries/main/dmg

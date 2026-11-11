@@ -7,6 +7,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import dev.hnm.workbench.backend.desktop.JvmPatternPlayer
+import dev.hnm.workbench.core.playback.HapticCapabilities
 import dev.hnm.workbench.ui.model.EditorState
 
 /** Desktop entrypoint: `./gradlew :ui:run`. Hosts the shared [WorkbenchApp] in a window. */
@@ -22,6 +23,8 @@ fun main() = application {
         val state = remember {
             EditorState().apply {
                 if (JvmPatternPlayer.audioAvailable()) player = JvmPatternPlayer()
+                // Desktops have no haptic actuator; say so rather than imply one.
+                hostCapabilities = HapticCapabilities.NONE
             }
         }
         // A different procedural splash motif each launch (seed varies with wall-clock).
