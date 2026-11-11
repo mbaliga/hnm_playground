@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    HAfx Studio launcher icon (minSdk 31, so adaptive-only: no legacy density PNGs).
+    Light by default; the dark variant comes from values-night. Android 13+ "Themed icons" tint the
+    monochrome layer instead (only its alpha is used, so it reuses the foreground glyphs).
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>
