@@ -5,6 +5,7 @@
 
     <application
         android:allowBackup="true"
+        android:resizeableActivity="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
@@ -16,6 +17,12 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@android:style/Theme.Material.NoActionBar">
+            <!-- Desktop/freeform windows: open wide, never below the narrow layout. -->
+            <layout
+                android:defaultWidth="900dp"
+                android:defaultHeight="700dp"
+                android:minWidth="320dp"
+                android:minHeight="400dp" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

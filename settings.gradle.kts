@@ -26,6 +26,9 @@ include(":ui")
 // without needing the Android SDK or a physical device.
 include(":desktopApp")
 
+// JVM desktop playback backends (JvmAudioBackend, JvmPatternPlayer). Pure JVM, no gate.
+include(":backend-desktop")
+
 // The Android player app. It needs the Android SDK, so it is only wired into the build when an SDK is
 // available (CI installs one). In SDK-less environments the module is skipped and `:core` stays a
 // JVM-only KMP module — keeping `./gradlew build` green here while CI builds the real APK.
@@ -33,8 +36,8 @@ if (androidSdkAvailable()) {
     include(":androidApp")
 }
 
-// NOTE: `:backend-desktop` (controller HID backends) is described in docs/MODULES.md. It requires
-// native HID/SDL toolchains that are not provisioned here, so it is not wired in yet.
+// NOTE: `:backend-desktop` holds only the javax.sound audio path so far. The controller HID backends
+// described in docs/MODULES.md need native SDL/HID toolchains that are not provisioned here.
 
 // Android is opt-in via an EXPLICIT signal, not by sniffing ANDROID_HOME — hosted CI runners ship the
 // SDK preset, so sniffing would pull `:androidApp` (and a full Android toolchain) into the JVM-only CI

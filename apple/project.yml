@@ -1,0 +1,30 @@
+# SCAFFOLD, NEVER GENERATED OR BUILT. XcodeGen spec for the iOS/iPadOS head (plan I5). It has not been run
+# through XcodeGen or Xcode; whether it yields a valid project is unverified.
+# Deliberately absent until the Kotlin/Compose/Xcode pin is applied (OQ-17/OQ-38) and :backend-ios exists:
+# the WorkbenchKit framework link and the SwiftUI shell sources.
+name: Workbench
+options:
+  bundleIdPrefix: com.asoc
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    CODE_SIGNING_ALLOWED: "NO"
+    CODE_SIGN_IDENTITY: ""
+    DEVELOPMENT_TEAM: ""
+    # Throwaway default (R11); the real com.asoc.<appname> waits for the owner's NAMES.md row.
+    PRODUCT_BUNDLE_IDENTIFIER: "$(WORKBENCH_BUNDLE_ID)"
+    WORKBENCH_BUNDLE_ID: com.asoc.workbench-scaffold
+    MARKETING_VERSION: "0.14.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  Workbench:
+    type: application
+    platform: iOS
+    # No sources yet: the SwiftUI shell is written after the framework exists.
+    sources: []
+    settings:
+      base:
+        INFOPLIST_FILE: Resources/Info.plist
+    # Resources/PrivacyInfo.xcprivacy is added to the target's resources when sources exist.

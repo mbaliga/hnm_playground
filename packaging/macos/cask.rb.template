@@ -1,0 +1,14 @@
+# DISABLED TEMPLATE (UNSIGNED / not for release). Homebrew cask skeleton; no tap exists and nothing is
+# published (OQ-4, OQ-12). Replace every <PLACEHOLDER> only after the owner rules; the cask token and
+# bundle id need a NAMES.md row first (R11).
+cask "<CASK_TOKEN>" do
+  version "<VERSION>"
+  sha256 "<SHA256_OF_NOTARISED_DMG>"
+
+  url "<RELEASE_URL>/<DMG_FILENAME>"
+  name "Haptics + Audio Workbench"
+  desc "Design haptic and sound patterns"
+  homepage "<HOMEPAGE>"
+
+  app "HapticsAudioWorkbench.app"
+end
