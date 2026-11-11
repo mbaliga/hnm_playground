@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HAfx Studio icon, light: black glyphs on white (docs/brand/hafx-studio-icon-light.svg). -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+    <color name="ic_launcher_glyph">#000000</color>
+</resources>

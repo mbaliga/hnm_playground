@@ -86,6 +86,10 @@ compose.desktop {
             targetFormats(TargetFormat.Deb, TargetFormat.AppImage, TargetFormat.Dmg, TargetFormat.Msi)
             packageName = "HapticsAudioWorkbench"
             packageVersion = "1.0.0"
+            linux {
+                // HAfx Studio app icon (a package carries one icon, so the light tile; see docs/brand/).
+                iconFile.set(project.file("src/jvmMain/resources/icons/hafx-studio-icon-light.png"))
+            }
         }
     }
 }

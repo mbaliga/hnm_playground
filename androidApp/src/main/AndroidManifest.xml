@@ -6,7 +6,8 @@
     <application
         android:allowBackup="true"
         android:resizeableActivity="true"
-        android:label="Haptics Workbench"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.DarkActionBar">
 
@@ -14,7 +15,7 @@
         <activity
             android:name=".WorkbenchActivity"
             android:exported="true"
-            android:label="Haptics Workbench"
+            android:label="@string/app_name"
             android:theme="@android:style/Theme.Material.NoActionBar">
             <!-- Desktop/freeform windows: open wide, never below the narrow layout. -->
             <layout
