@@ -102,3 +102,7 @@ The app icon (light + dark) and how it maps onto the Android launcher and the de
 
 - The **Android build is gated behind `ENABLE_ANDROID=1`** (SDK not always in the image) — don't assume the APK builds in CI; the default `./gradlew build` stays JVM-only.
 - The single backend-agnostic IR (`HapticAudioPattern`) is the spine — keep the render/export seam swappable per backend.
+
+## Licence
+
+Licensed under the [Apache License 2.0](LICENSE) (SPDX: `Apache-2.0`). Copyright 2026 Madhav Baliga.
