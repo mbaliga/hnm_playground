@@ -1,0 +1,17 @@
+# DISABLED TEMPLATE (UNSIGNED / not for release). winget singleton manifest skeleton. Nothing is submitted
+# (OQ-4, OQ-12). Every <PLACEHOLDER> waits for a NAMES.md row and an owner ruling (R11); PackageIdentifier
+# and the MSI upgrade GUID must not be invented.
+PackageIdentifier: <PUBLISHER.PACKAGE>
+PackageVersion: <VERSION>
+PackageLocale: en-US
+Publisher: <PUBLISHER>
+PackageName: Haptics + Audio Workbench
+License: <LICENSE_SPDX_PENDING_OQ-12>
+ShortDescription: Design haptic and sound patterns
+Installers:
+  - Architecture: x64
+    InstallerType: wix
+    InstallerUrl: <RELEASE_URL>/<MSI_FILENAME>
+    InstallerSha256: <SHA256_OF_MSI>
+ManifestType: singleton
+ManifestVersion: 1.6.0

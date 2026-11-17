@@ -2,6 +2,7 @@ package dev.hnm.workbench.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +35,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.hnm.workbench.ui.components.AssistantPanel
@@ -77,7 +82,16 @@ fun WorkbenchApp(
 ) {
     WorkbenchTheme {
         // Pitch-black page (recorder2 body background:#000)
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
+        val focus = remember { FocusRequester() }
+        // Desktop-class keyboard shortcuts (Space/Ctrl+Enter play, Delete removes, Ctrl+S saves).
+        // Additive: no layout change, and no key events arrive without a hardware keyboard.
+        Box(
+            Modifier.fillMaxSize().background(Color.Black)
+                .focusRequester(focus)
+                .onKeyEvent { handleShortcut(state, it) }
+                .focusable(),
+        ) {
+            LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
             BoxWithConstraints(Modifier.fillMaxSize().padding(16.dp)) {
                 val narrow = maxWidth < 720.dp
                 DeviceShell {

@@ -1,0 +1,19 @@
+# DISABLED TEMPLATE (UNSIGNED / not for release). Authenticode / MSIX re-signing sketch. Rename to sign.ps1
+# only after the owner rules the signing route (OQ-3). Certificate material comes from the environment only.
+# Never run and not parseable here (no PowerShell in the build container): review by eye.
+param(
+  [Parameter(Mandatory = $true)][string]$MsiPath
+)
+$ErrorActionPreference = 'Stop'
+
+if (-not $env:SIGN_CERT_PFX_BASE64 -or -not $env:SIGN_CERT_PASSWORD) {
+  throw 'Signing secrets are not set in the environment.'
+}
+
+$pfx = Join-Path $env:RUNNER_TEMP 'cert.pfx'
+[IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_CERT_PFX_BASE64))
+try {
+  signtool sign /f $pfx /p $env:SIGN_CERT_PASSWORD /fd SHA256 /tr <TIMESTAMP_URL> /td SHA256 $MsiPath
+} finally {
+  Remove-Item $pfx -Force -ErrorAction SilentlyContinue
+}

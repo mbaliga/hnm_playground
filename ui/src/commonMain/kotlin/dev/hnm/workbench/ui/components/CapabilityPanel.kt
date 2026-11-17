@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.hnm.workbench.core.device.DeviceDatabase
 import dev.hnm.workbench.core.device.DeviceProfile
+import dev.hnm.workbench.core.playback.ActuatorType
 import dev.hnm.workbench.core.playback.HapticCapabilities
 import dev.hnm.workbench.ui.model.EditorState
 import dev.hnm.workbench.ui.theme.WorkbenchColors
@@ -49,6 +50,15 @@ fun CapabilityPanel(state: EditorState, modifier: Modifier = Modifier) {
     var selectedDeviceId by remember { mutableStateOf<String?>(null) }
 
     Column(modifier) {
+        // Only hosts that opted in say anything about their own hardware; null renders exactly as before.
+        state.hostCapabilities?.let { host ->
+            Text(
+                hostCapabilitiesText(host),
+                color = WorkbenchColors.Muted,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         Text("Target device", color = WorkbenchColors.Muted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -127,5 +137,13 @@ private fun DeviceChip(device: DeviceProfile, selected: Boolean, onClick: () -> 
         )
     }
 }
+
+/** Honest one-line statement of the host's own actuator, shown only when a host supplies it. */
+fun hostCapabilitiesText(host: HapticCapabilities): String =
+    if (host.actuatorType == ActuatorType.NONE) {
+        "This host: audio only, no haptic actuator here."
+    } else {
+        "This host: ${host.actuatorType} actuator."
+    }
 
 private fun yn(b: Boolean) = if (b) "yes" else "no"

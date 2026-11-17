@@ -25,19 +25,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.hnm.workbench.ui.model.EditorState
 import dev.hnm.workbench.ui.theme.WorkbenchColors
+import kotlin.time.TimeSource
 
 /**
  * Tap-to-capture rhythm panel. The big button records tap times (via system clock mock); taps are
  * displayed as vertical markers on a mini timeline. "Load" converts the captured taps to a pattern
  * via [RhythmCapture] and replaces the current pattern in [state].
  *
- * On desktop/JVM the clock source is [System.currentTimeMillis]; on Android the same works because
- * this is commonMain Compose — the state operations in [EditorState.startOrTap] accept a Long ms.
+ * Tap times come from a monotonic [TimeSource] (milliseconds since the panel was composed), so the
+ * same commonMain code runs on every target and only the differences between taps matter —
+ * [EditorState.startOrTap] accepts any Long ms counter.
  */
 @Composable
 fun RhythmCapturePanel(state: EditorState, modifier: Modifier = Modifier) {
     // Epoch tick to force timeline redraw when taps list changes.
     var tapEpoch by remember { mutableStateOf(0) }
+    val tapClock = remember { TimeSource.Monotonic.markNow() }
 
     Column(modifier) {
         Text("Rhythm capture", color = WorkbenchColors.Muted, fontSize = 12.sp, modifier = Modifier.padding(bottom = 6.dp))
@@ -79,7 +82,7 @@ fun RhythmCapturePanel(state: EditorState, modifier: Modifier = Modifier) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Button(
                 onClick = {
-                    state.startOrTap(System.currentTimeMillis())
+                    state.startOrTap(tapClock.elapsedNow().inWholeMilliseconds)
                     tapEpoch++
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = WorkbenchColors.Primary),

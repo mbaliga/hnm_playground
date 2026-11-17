@@ -32,6 +32,14 @@ fun ExportPanel(state: EditorState, modifier: Modifier = Modifier) {
                 )
             }
         }
+        // Open/Save/Copy exist only when the host supplied PlatformIo; otherwise export is on-screen text.
+        if (state.hasIo) {
+            Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(selected = false, onClick = { state.openFromHost() }, label = { Text("Open", fontSize = 11.sp) })
+                FilterChip(selected = false, onClick = { state.saveToHost() }, label = { Text("Save", fontSize = 11.sp) })
+                FilterChip(selected = false, onClick = { state.copyToHost() }, label = { Text("Copy", fontSize = 11.sp) })
+            }
+        }
         // No internal scroll/fillMaxSize: this panel always sits inside a scrolling parent column, so a
         // nested scroll here would measure with infinite height. Lay out at natural height instead.
         Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {

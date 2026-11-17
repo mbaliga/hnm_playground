@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# DISABLED TEMPLATE (UNSIGNED / not for release). Rename to notarize.sh only after the owner has joined the
+# Apple Developer Program and put the secrets below in a GitHub environment behind a required-approval gate
+# (OQ-3). Secrets come from the environment only; nothing is stored in this repo. Never run: untested.
+set -eu
+
+: "${APPLE_ID:?set in the environment}"
+: "${APPLE_TEAM_ID:?set in the environment}"
+: "${APPLE_APP_PASSWORD:?app-specific password, set in the environment}"
+: "${DMG_PATH:?path to the signed .dmg}"
+
+xcrun notarytool submit "$DMG_PATH" \
+  --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+xcrun stapler staple "$DMG_PATH"

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- TEMPLATE, DISABLED: nothing reads this file yet. Hardened-runtime entitlements for a future signed,
+     notarised build (OQ-3). allow-jit is the expected need for a JVM (to be confirmed by asom's S-M3
+     self-test, which needs a Mac). Not wired into ui/build.gradle.kts; the current DMG is UNSIGNED. -->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+</dict>
+</plist>
